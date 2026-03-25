@@ -1,0 +1,280 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+
+  /* ── NAC Dark Mode Default ── */
+  --background: #0a0a0a;
+  --foreground: #f0f0f0;
+  --card: #111111;
+  --card-foreground: #f0f0f0;
+  --popover: #111111;
+  --popover-foreground: #f0f0f0;
+  --primary: #CA0C85;
+  --primary-foreground: #ffffff;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #f0f0f0;
+  --muted: #1a1a1a;
+  --muted-foreground: #8a8a8a; /* Contrast Audit: upgraded from #6b6b6b (~4:1) to #8a8a8a (~5.5:1) for WCAG AA */
+  --accent: #1f1f1f;
+  --accent-foreground: #f0f0f0;
+  --destructive: #e53e3e;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: transparent;
+  --input-background: #1a1a1a;
+  --switch-background: #2a2a2a;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #CA0C85;
+
+  /* ── Typography – explizit in :root damit var() in React inline-styles auflöst ── */
+  --font-display:   'Bebas Neue', 'Barlow Condensed', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+  --font-sans:      'Inter', system-ui, sans-serif;
+
+  /* ── Brand ── */
+  --brand: #CA0C85;
+  --brand-dark: #a00868;
+  --brand-light: #e50fa0;
+  --brand-muted: rgba(202, 12, 133, 0.15);
+
+  /* ── Surface Levels ── */
+  --surface-0: #050505;
+  --surface-1: #0a0a0a;
+  --surface-2: #111111;
+  --surface-3: #1a1a1a;
+  --surface-4: #252525;
+
+  /* ── Charts ── */
+  --chart-1: #CA0C85;
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  --radius: 0.5rem;
+
+  /* ── Sidebar ── */
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-primary: #CA0C85;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #f0f0f0;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #CA0C85;
+}
+
+/* Keep .dark for explicit toggles — same as :root for NAC */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f0f0f0;
+  --card: #111111;
+  --card-foreground: #f0f0f0;
+  --popover: #111111;
+  --popover-foreground: #f0f0f0;
+  --primary: #CA0C85;
+  --primary-foreground: #ffffff;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #f0f0f0;
+  --muted: #1a1a1a;
+  --muted-foreground: #8a8a8a; /* Contrast Audit: upgraded from #6b6b6b (~4:1) to #8a8a8a (~5.5:1) for WCAG AA */
+  --accent: #1f1f1f;
+  --accent-foreground: #f0f0f0;
+  --destructive: #e53e3e;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #1a1a1a;
+  --ring: #CA0C85;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #CA0C85;
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-primary: #CA0C85;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #f0f0f0;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #CA0C85;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ── Brand Tokens ── */
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-light: var(--brand-light);
+  --color-brand-muted: var(--brand-muted);
+
+  /* ── Surface Tokens ── */
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', 'Barlow Condensed', sans-serif;
+  --font-condensed: 'Barlow Condensed', sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: var(--font-size);
+    scroll-behavior: smooth;
+    /*
+     * position: relative is required by Motion v12's useScroll(). When
+     * useScroll({ target }) is called without an explicit container, Motion
+     * resolves document.documentElement as the scroll container and checks
+     * that it has a non-static position. Without this, the dev-mode warning
+     * "Please ensure that the container has a non-static position…" fires.
+     */
+    position: relative;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    background-color: var(--surface-0);
+    position: relative;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-5xl);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 400;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  h3 {
+    font-family: var(--font-condensed);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  button {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--surface-1);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--brand);
+    border-radius: 2px;
+  }
+}
+
+/*
+ * ── Contrast Audit: Accessibility Overrides ──────────────────────────────────
+ * WCAG AA requires 4.5:1 for normal text, 3:1 for large text (>=18px or 14px bold).
+ *
+ * Inline opacity classes on #050505 background:
+ *   text-white/30 → ~2.0:1 ✘  (decorative only – labels, dividers)
+ *   text-white/40 → ~2.6:1 ✘  (use only for large/bold text)
+ *   text-white/50 → ~3.5:1 ✘  (use only for large text >=18px)
+ *   text-white/60 → ~4.5:1 ✓  (body text minimum)
+ *   text-white/70 → ~6.8:1 ✓✓ (recommended for body text)
+ *
+ * High-contrast mode: boost low-opacity text for users who prefer more contrast.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --muted-foreground: #a0a0a0;
+    --border: rgba(255, 255, 255, 0.14);
+  }
+}
