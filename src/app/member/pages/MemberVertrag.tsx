@@ -446,7 +446,7 @@ function InvoicePreviewDialog({
   const companyName    = snap.company_name    ?? "Nice Athletic Club GmbH";
   const companyAddress = snap.company_address ?? "Musterstraße 42, 10115 Berlin";
   const companyEmail   = snap.company_email   ?? "info@nice-athletic-club.de";
-  const vatId          = snap.vat_id          ?? "DE123456789";
+  const vatId          = snap.vat_id          ?? "DE320247039";
   const courtInfo      = snap.court_info      ?? "Amtsgericht Berlin HRB 123456";
   const ceo            = snap.ceo             ?? "Max Mustermann";
   const bankDetails    = snap.bank_details    ?? "IBAN DE89 3704 0044 0532 0130 00 · Commerzbank AG";

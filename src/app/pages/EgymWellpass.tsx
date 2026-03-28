@@ -494,7 +494,7 @@ function StepsSection({ data }: { data: ValuesGridBlockData }) {
   );
 }
 
-// ── Trust Badges / Kontingente Section ────────────────────────────────────────
+// ── Trust Badges / Kontingente Section ───────────────────────────────────────���
 function PlansSection({ data }: { data: TrustBadgesBlockData }) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
@@ -690,7 +690,7 @@ function LocationSection({ data }: { data: LocationMapBlockData }) {
             <div className="grid sm:grid-cols-2 gap-4 mb-6">
               {[
                 { icon: "MapPin", label: "Adresse", val: data.address },
-                { icon: "Clock",  label: "Öffnungszeiten", val: "Mo–Fr: 06:00–23:00\nSa–So: 08:00–22:00" },
+                { icon: "Clock",  label: "Öffnungszeiten", val: "Täglich: 05:00 – 00:00" },
                 { icon: "Phone",  label: "Telefon",  val: data.phone },
                 { icon: "Mail",   label: "E-Mail",   val: data.email },
               ].map(({ icon, label, val }) => (
@@ -916,7 +916,7 @@ export default function EgymWellpass() {
       <PageMeta
         title="EGYM Wellpass Göppingen – Nice Athletic Club | Premium Partner"
         description="EGYM Wellpass im Nice Athletic Club Göppingen nutzen: Unlimitiertes Training, Kurse, HYROX Zone & Wellness. Kein Zusatzvertrag – einfach einchecken. Offizieller Wellpass-Partner."
-        canonical="https://niceathleticclub.de/egym-wellpass"
+        canonical="https://nicefitness.de/egym-wellpass"
       />
 
       {/* JSON-LD für lokale SEO */}
@@ -926,7 +926,7 @@ export default function EgymWellpass() {
         "name": "Nice Athletic Club – EGYM Wellpass Partner Göppingen",
         "description": "EGYM Wellpass Partner in Göppingen. Training mit Wellpass im Nice Athletic Club.",
         "url": "https://niceathleticclub.de/egym-wellpass",
-        "address": { "@type": "PostalAddress", "streetAddress": "Hohenstaufenstraße 1", "addressLocality": "Göppingen", "postalCode": "73033", "addressCountry": "DE" },
+        "address": { "@type": "PostalAddress", "streetAddress": "Robert-Bosch-Straße 5", "addressLocality": "Göppingen", "postalCode": "73037", "addressCountry": "DE" },
         "amenityFeature": [
           { "@type": "LocationFeatureSpecification", "name": "EGYM Wellpass akzeptiert", "value": true },
           { "@type": "LocationFeatureSpecification", "name": "Kostenfreie Parkplätze", "value": true },

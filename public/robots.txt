@@ -1,0 +1,93 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# robots.txt – Nice Athletic Club (nicefitness.de)
+# Letzte Aktualisierung: 2026-03
+# Kontakt bei Fragen: info@nicefitness.de
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Alle freundlichen Crawler ──────────────────────────────────────────────────
+User-agent: *
+
+# Öffentliche Seiten → indexierbar (kein Disallow nötig)
+
+# App-Bereiche → NICHT indexieren
+Disallow: /admin/
+Disallow: /member/
+Disallow: /login
+Disallow: /api/
+
+# Technische & temporäre Pfade
+Disallow: /src/
+Disallow: /*.json$
+Disallow: /*?*debug=
+Disallow: /*?*preview=
+
+# ── Sitemap ───────────────────────────────────────────────────────────────────
+Sitemap: https://nicefitness.de/sitemap.xml
+
+# ── Google (erweiterte Regeln) ────────────────────────────────────────────────
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /member/
+Disallow: /login
+Disallow: /api/
+
+# ── Google Images ─────────────────────────────────────────────────────────────
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /og-default.jpg
+Disallow: /admin/
+Disallow: /member/
+
+# ── Bing / Microsoft ─────────────────────────────────────────────────────────
+User-agent: Bingbot
+Allow: /
+Disallow: /admin/
+Disallow: /member/
+Disallow: /login
+Disallow: /api/
+
+# ── Social Media Bots (für korrekte Link-Previews) ───────────────────────────
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# ── AI-Crawler (Stand 2026) ───────────────────────────────────────────────────
+# GPTBot (OpenAI) – erlaubt für EEAT-Signale
+User-agent: GPTBot
+Allow: /
+Disallow: /admin/
+Disallow: /member/
+Disallow: /api/
+
+# Claude (Anthropic)
+User-agent: ClaudeBot
+Allow: /
+Disallow: /admin/
+Disallow: /member/
+Disallow: /api/
+
+# ── Spam-Crawler blockieren ───────────────────────────────────────────────────
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+# ── Crawl-Delay für alle sonstigen Bots ──────────────────────────────────────
+User-agent: *
+Crawl-delay: 5

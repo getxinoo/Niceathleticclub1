@@ -44,7 +44,9 @@ interface Props {
 export function PricingNoticeBlock({ notices, plans = [], className = "" }: Props) {
   if (!notices.length) return null;
 
-  const sorted = [...notices].sort((a, b) => a.sort_order - b.sort_order);
+  const sorted = [...notices]
+    .filter((n) => n.type !== "blaulicht")
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   return (
     <section

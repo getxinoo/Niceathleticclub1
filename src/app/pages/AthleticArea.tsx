@@ -332,8 +332,10 @@ export default function AthleticArea() {
   return (
     <>
       <PageMeta
-        title="Athletic Area – Bodybuilding & Muskelaufbau | Nice Athletic Club Göppingen"
-        description="Premium Fitness in Göppingen: Bodybuilding an Equipment von Eleiko, Hammer Strength, Gym80, Panatta, Cybex, Prime und 14 weiteren Top-Herstellern. 4 Power Racks, 1.500+ qm Trainingsfläche, täglich 5:00–00:00 Uhr."
+        title="Athletic Area Göppingen – Bodybuilding & Kraft | Nice Athletic Club"
+        description="Athletic Area im NAC Göppingen: Eleiko, Hammer Strength, Gym80, Panatta, Cybex – 14+ Premium-Hersteller, 4 Power Racks, 1.500+ qm. Bodybuilding & Krafttraining auf Profi-Niveau. Gratis testen!"
+        canonical="https://nicefitness.de/athletic-area"
+        ogImage="https://nicefitness.de/images/athletic/hero.png"
       />
 
       {/* ── HERO ── */}

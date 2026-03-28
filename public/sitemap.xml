@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  sitemap.xml – Nice Athletic Club (nicefitness.de)
+  ─────────────────────────────────────────────────────────────────────────────
+  Aktualisierungsintervall: Bei jeder neuen Seite oder inhaltlicher Änderung
+  Google Search Console: https://search.google.com/search-console
+  Ping-URL nach Änderung: https://www.google.com/ping?sitemap=https://nicefitness.de/sitemap.xml
+-->
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+>
+
+  <!-- ── HOMEPAGE ──────────────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="de" href="https://nicefitness.de/"/>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/studio/entrance.png</image:loc>
+      <image:title>Nice Athletic Club Göppingen – Eingang</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── ÜBER UNS / STUDIO ─────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/ueber-uns</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/studio</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/studio/crossfit-zone.png</image:loc>
+      <image:title>NAC Studio – CrossFit Zone Göppingen</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/studio/athletic-zone.png</image:loc>
+      <image:title>NAC Studio – Athletic Area Göppingen</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── ANGEBOTE / PROGRAMME ──────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/crossfit-gp</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/crossfit/hero.png</image:loc>
+      <image:title>CrossFit GP Göppingen – Nice Athletic Club</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/hyrox</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/hyrox/hero.png</image:loc>
+      <image:title>HYROX Zone Göppingen – Nice Athletic Club</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/athletic-area</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/athletic/hero.png</image:loc>
+      <image:title>Athletic Area – Nice Athletic Club Göppingen</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/personal-training</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/kurse</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.90</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/nice-theke</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/theke/wide.png</image:loc>
+      <image:title>Nice Theke – Café im Nice Athletic Club Göppingen</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── MITGLIEDSCHAFT / PREISE ────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/preise</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/probetraining</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/egym-wellpass</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/firmenfitness</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+  </url>
+
+  <!-- ── TEAM ───────────────────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/team</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.80</priority>
+    <image:image>
+      <image:loc>https://nicefitness.de/images/team/dome.png</image:loc>
+      <image:title>NAC Team – Trainer im Nice Athletic Club Göppingen</image:title>
+    </image:image>
+  </url>
+
+  <!-- ── KONTAKT / KARRIERE ─────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/kontakt</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/karriere</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/presse</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.60</priority>
+  </url>
+
+  <!-- ── LEGAL ──────────────────────────────────────────────────────────────── -->
+  <url>
+    <loc>https://nicefitness.de/impressum</loc>
+    <lastmod>2026-03-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/datenschutz</loc>
+    <lastmod>2026-03-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+  <url>
+    <loc>https://nicefitness.de/agb</loc>
+    <lastmod>2026-03-01</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.30</priority>
+  </url>
+
+</urlset>

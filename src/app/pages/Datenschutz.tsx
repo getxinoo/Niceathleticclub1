@@ -42,7 +42,8 @@ export default function Datenschutz() {
       <PageMeta
         title="Datenschutz"
         description="Datenschutzerklärung der MK Fitness & Strength GmbH – Nice Athletic Club, Göppingen. Informationen gemäß DSGVO zu Cookies, Google Analytics, Hosting und Ihren Rechten."
-        canonical="https://niceathleticclub.de/datenschutz"
+        canonical="https://nicefitness.de/datenschutz"
+        robots="noindex,nofollow"
       />
 
       <motion.div

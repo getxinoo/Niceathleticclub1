@@ -51,6 +51,10 @@ import {
   FileText,
   PlusCircle,
   Table,
+  Undo2,
+  Redo2,
+  Search,
+  Globe,
 } from "lucide-react";
 import {
   BLOCK_REGISTRY,
@@ -120,6 +124,13 @@ const BLOCK_ICONS: Record<BlockType, React.ComponentType<{ size?: number; style?
   "pros-cons":       List,
   "legal-content":   FileText,
   "opening-hours":   Clock,
+  // Studio-spezifische Blöcke
+  "studio-hero":     Image,
+  "studio-zones":    Layers,
+  "studio-info":     Clock,
+  // Team-spezifische Blöcke
+  "team-header":     Users,
+  "team-grid":       Users,
 };
 
 // ── Draggable Block Item ──────────────────────────────────────────────────────
@@ -461,8 +472,34 @@ export default function PageEditor() {
 
   const meta = PAGE_META[slug] ?? { title: slug, path: `/${slug}` };
 
+  // ── SEO State ─────────────────────────────────────────────────────────────
+  interface SeoData {
+    metaTitle: string;
+    metaDescription: string;
+    ogImage: string;
+    canonical: string;
+    robots: string;
+    schemaJson: string;
+  }
+  const [seo, setSeo] = useState<SeoData>({
+    metaTitle: "",
+    metaDescription: "",
+    ogImage: "",
+    canonical: "",
+    robots: "index, follow",
+    schemaJson: "",
+  });
+  const [sidebarTab, setSidebarTab] = useState<"blocks" | "seo">("blocks");
+
+  // ── Undo/Redo History ──────────────────────────────────────────────────────
+  const historyRef = useRef<PageBlock[][]>([]);
+  const historyIdxRef = useRef<number>(-1);
+  const isUndoRedo = useRef(false);
+
   // ── State ──────────────────────────────────────────────────────────────────
-  const [blocks, setBlocks]               = useState<PageBlock[]>([]);
+  const [blocks, _setBlocks]              = useState<PageBlock[]>([]);
+  const [canUndo, setCanUndo]             = useState(false);
+  const [canRedo, setCanRedo]             = useState(false);
   const [selectedId, setSelectedId]       = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen]   = useState(false);
   const [pickerOpen, setPickerOpen]       = useState(false);
@@ -471,6 +508,56 @@ export default function PageEditor() {
   const [saving, setSaving]              = useState(false);
   const [saveSuccess, setSaveSuccess]     = useState(false);
 
+  // Wrapper: pushes to history before update
+  const setBlocks = useCallback((updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
+    _setBlocks((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (!isUndoRedo.current) {
+        // Trim future history
+        historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1);
+        historyRef.current.push(next);
+        historyIdxRef.current = historyRef.current.length - 1;
+        setCanUndo(historyIdxRef.current > 0);
+        setCanRedo(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyIdxRef.current <= 0) return;
+    isUndoRedo.current = true;
+    historyIdxRef.current -= 1;
+    const prev = historyRef.current[historyIdxRef.current];
+    _setBlocks(prev);
+    setCanUndo(historyIdxRef.current > 0);
+    setCanRedo(true);
+    isUndoRedo.current = false;
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return;
+    isUndoRedo.current = true;
+    historyIdxRef.current += 1;
+    const next = historyRef.current[historyIdxRef.current];
+    _setBlocks(next);
+    setCanUndo(true);
+    setCanRedo(historyIdxRef.current < historyRef.current.length - 1);
+    isUndoRedo.current = false;
+  }, []);
+
+  // Keyboard shortcuts: Ctrl+Z / Ctrl+Y / Ctrl+S
+  const handleSaveRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSaveRef.current(); }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
+
   const { isVisible, setVisible } = usePageVisibility();
   const pageVisible = isVisible(slug);
   const hasNavLink = !!SLUG_TO_NAV_HREF[slug];
@@ -478,6 +565,8 @@ export default function PageEditor() {
   // Load initial blocks: API → localStorage → seed
   useEffect(() => {
     let cancelled = false;
+    historyRef.current = [];
+    historyIdxRef.current = -1;
 
     // Fast path: show localStorage or seed immediately (no flicker)
     const getLocalOrSeed = (): PageBlock[] => {
@@ -490,14 +579,32 @@ export default function PageEditor() {
       } catch { /* ignore */ }
       return PAGE_INITIAL_BLOCKS[slug] ?? [];
     };
-    setBlocks(getLocalOrSeed());
+
+    // Load SEO from localStorage
+    try {
+      const seoSaved = localStorage.getItem(`nac_seo_${slug}`);
+      if (seoSaved) setSeo(JSON.parse(seoSaved));
+    } catch { /* ignore */ }
+
+    const initial = getLocalOrSeed();
+    // Prime history
+    historyRef.current = [initial];
+    historyIdxRef.current = 0;
+    _setBlocks(initial);
+    setCanUndo(false);
+    setCanRedo(false);
 
     // Background: try PHP API to get server-saved blocks (production)
     api.pages.getBlocks(slug)
       .then((res) => {
         if (cancelled) return;
         if (Array.isArray(res?.blocks) && res.blocks.length > 0) {
-          setBlocks(res.blocks as PageBlock[]);
+          const serverBlocks = res.blocks as PageBlock[];
+          historyRef.current = [serverBlocks];
+          historyIdxRef.current = 0;
+          _setBlocks(serverBlocks);
+          setCanUndo(false);
+          setCanRedo(false);
           if (res.published !== undefined) setPublished(res.published);
         }
       })
@@ -535,6 +642,7 @@ export default function PageEditor() {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    handleSaveRef.current = handleSave; // keep ref in sync
     setSaving(true);
 
     // Immer zuerst in localStorage persistieren (schnell, offline-sicher)
@@ -621,6 +729,32 @@ export default function PageEditor() {
           >
             {blocks.length} {blocks.length === 1 ? "Block" : "Blöcke"}
           </span>
+
+          {/* Undo / Redo */}
+          <div className="flex items-center" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              title="Rückgängig (Ctrl+Z)"
+              className="flex items-center justify-center px-3 transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+              style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", minHeight: "34px", borderRight: "1px solid rgba(255,255,255,0.08)" }}
+              onMouseEnter={(e) => { if (canUndo) e.currentTarget.style.color = "white"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+            >
+              <Undo2 size={13} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              title="Wiederholen (Ctrl+Y)"
+              className="flex items-center justify-center px-3 transition-colors cursor-pointer disabled:opacity-25 disabled:cursor-not-allowed"
+              style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", minHeight: "34px" }}
+              onMouseEnter={(e) => { if (canRedo) e.currentTarget.style.color = "white"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+            >
+              <Redo2 size={13} />
+            </button>
+          </div>
 
           {/* Visibility toggle */}
           <button
@@ -742,6 +876,83 @@ export default function PageEditor() {
               borderRight: "1px solid rgba(255,255,255,0.06)",
             }}
           >
+            {/* ── Sidebar Tab Navigation ── */}
+            <div className="flex shrink-0" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {([{ key: "blocks", label: "Blöcke" }, { key: "seo", label: "SEO" }] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSidebarTab(key)}
+                  className="flex-1 flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  style={{
+                    background: sidebarTab === key ? "rgba(202,12,133,0.08)" : "none",
+                    border: "none",
+                    borderBottom: sidebarTab === key ? "2px solid var(--brand)" : "2px solid transparent",
+                    color: sidebarTab === key ? "var(--brand)" : "rgba(255,255,255,0.3)",
+                    fontFamily: "var(--font-condensed)",
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    padding: "10px 0",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {sidebarTab === "seo" ? (
+              /* ── SEO Tab ── */
+              <div className="flex-1 overflow-y-auto p-4" style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                <p style={{ fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.2em", color: "rgba(255,255,255,0.2)", textTransform: "uppercase" }}>
+                  Suchmaschinen-Optimierung
+                </p>
+                {/* Meta Title */}
+                <div>
+                  <label style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>Meta Title</label>
+                  <input value={seo.metaTitle} onChange={(e) => setSeo((s) => ({ ...s, metaTitle: e.target.value }))} placeholder={`${meta.title} | Nice Athletic Club`} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: "10px 12px", fontSize: "12px", boxSizing: "border-box", outline: "none" }} />
+                  <p style={{ fontSize: "10px", color: seo.metaTitle.length > 60 ? "#f87171" : "rgba(255,255,255,0.2)", marginTop: "4px", textAlign: "right" }}>{seo.metaTitle.length}/60</p>
+                </div>
+                {/* Meta Description */}
+                <div>
+                  <label style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>Meta Description</label>
+                  <textarea value={seo.metaDescription} onChange={(e) => setSeo((s) => ({ ...s, metaDescription: e.target.value }))} rows={3} placeholder="Kurze, prägnante Beschreibung (150–160 Zeichen)…" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: "10px 12px", fontSize: "12px", resize: "vertical", boxSizing: "border-box", outline: "none" }} />
+                  <p style={{ fontSize: "10px", color: seo.metaDescription.length > 160 ? "#f87171" : "rgba(255,255,255,0.2)", marginTop: "4px", textAlign: "right" }}>{seo.metaDescription.length}/160</p>
+                </div>
+                {/* OG Image */}
+                <div>
+                  <label style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>OG Bild-URL</label>
+                  <input value={seo.ogImage} onChange={(e) => setSeo((s) => ({ ...s, ogImage: e.target.value }))} placeholder="https://…/og-image.jpg (1200×630px)" style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: "10px 12px", fontSize: "12px", boxSizing: "border-box", outline: "none" }} />
+                </div>
+                {/* Robots */}
+                <div>
+                  <label style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>Robots</label>
+                  <select value={seo.robots} onChange={(e) => setSeo((s) => ({ ...s, robots: e.target.value }))} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: "10px 12px", fontSize: "12px", boxSizing: "border-box" }}>
+                    <option value="index, follow">index, follow (Standard)</option>
+                    <option value="noindex, follow">noindex, follow</option>
+                    <option value="index, nofollow">index, nofollow</option>
+                    <option value="noindex, nofollow">noindex, nofollow</option>
+                  </select>
+                </div>
+                {/* Schema JSON-LD */}
+                <div>
+                  <label style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(255,255,255,0.4)", display: "block", marginBottom: "6px", textTransform: "uppercase" }}>Schema.org JSON-LD</label>
+                  <textarea value={seo.schemaJson} onChange={(e) => setSeo((s) => ({ ...s, schemaJson: e.target.value }))} rows={5} placeholder={`{\n  "@type": "LocalBusiness"\n}`} style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: "10px 12px", fontSize: "11px", fontFamily: "monospace", resize: "vertical", boxSizing: "border-box", outline: "none" }} />
+                </div>
+                {/* SERP Preview */}
+                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", padding: "16px" }}>
+                  <p style={{ fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.16em", color: "rgba(255,255,255,0.2)", textTransform: "uppercase", marginBottom: "10px" }}>Google-Vorschau</p>
+                  <p style={{ color: "#4285f4", fontSize: "14px", lineHeight: 1.3, marginBottom: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{seo.metaTitle || `${meta.title} | Nice Athletic Club`}</p>
+                  <p style={{ color: "#006621", fontSize: "11px", marginBottom: "3px" }}>nicefitness.de{meta.path}</p>
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "11px", lineHeight: 1.5, display: "-webkit-box" as const, WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{seo.metaDescription || "Keine Meta-Description angegeben."}</p>
+                </div>
+                <button onClick={() => { try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ } handleSave(); }} className="flex items-center justify-center gap-2 text-white cursor-pointer active:scale-[0.98]" style={{ background: "var(--brand)", border: "none", padding: "12px", fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  <Save size={12} /> SEO speichern
+                </button>
+              </div>
+            ) : (
+              /* ── Blocks Tab ── */
+              <>
             {/* Sidebar header */}
             <div
               className="flex items-center justify-between px-4 py-3 shrink-0"
@@ -888,6 +1099,8 @@ export default function PageEditor() {
                 Block hinzufügen
               </button>
             </div>
+            </>
+            )}
           </div>
 
           {/* ── RIGHT: Preview Pane ── */}

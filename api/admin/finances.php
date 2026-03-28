@@ -274,7 +274,7 @@ if ($method === 'POST' && $action === 'create') {
         $paddedCount  = str_pad((string) $dailyCount, 3, '0', STR_PAD_LEFT);
 
         // ### durch laufende Nummer ersetzen; falls kein ### im Format, anhängen
-        $invoiceNumber = str_contains($datePart, '###')
+        $invoiceNumber = (strpos($datePart, '###') !== false)
             ? str_replace('###', $paddedCount, $datePart)
             : $datePart . '-' . $paddedCount;
 

@@ -53,7 +53,7 @@ function save_magicline_settings(PDO $db, array $data): void {
 
 function normalize_base_url(string $base): string {
   $base = rtrim(trim($base), '/');
-  if (!str_ends_with($base, '/v1')) $base .= '/v1';
+  if (substr($base, -3) !== '/v1') $base .= '/v1';
   return $base;
 }
 
@@ -366,7 +366,7 @@ if ($action === 'connection_test') {
   [$code, $body, $err] = http_req('HEAD', $base . '/customers', $key);
   ml_log('INFO', 'HEAD /customers Antwort', ['http_code'=>$code, 'curl_error'=>$err ?: 'keiner']);
 
-  if ($code === 200) json_success(['ok'=>true,'env'=>str_contains($base,'sandbox')?'SANDBOX':'PROD']);
+  if ($code === 200) json_success(['ok'=>true,'env'=>(strpos($base,'sandbox') !== false)?'SANDBOX':'PROD']);
   if ($code === 401) json_error('API Key fehlt oder ist falsch (401).', 401);
   if ($code === 403) json_error('API Key ok, aber Scope fehlt (403).', 403);
   json_error('Verbindungstest fehlgeschlagen: HTTP '.$code, 400);

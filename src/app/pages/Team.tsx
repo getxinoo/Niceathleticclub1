@@ -110,8 +110,8 @@ function getDisplayName(m: TeamMember): string {
   return `${m.first_name || ""} ${m.last_name || ""}`.trim() || "Unbekannt";
 }
 function getDisplayRole(m: TeamMember): string { return m.position || m.role || ""; }
-function getProfileImage(m: TeamMember): string { return m.profile_image || m.image || ""; }
-function getDetailImage(m: TeamMember): string { return m.detail_image || m.profile_image || m.image || ""; }
+function getProfileImage(m: TeamMember): string { return m.profile_image || m.image || "/images/team/placeholder.svg"; }
+function getDetailImage(m: TeamMember): string { return m.detail_image || m.profile_image || m.image || "/images/team/placeholder.svg"; }
 
 function getSocialDisplay(url: string, platform: string): { url: string; handle: string } {
   if (!url) return { url: "", handle: "" };
@@ -900,9 +900,10 @@ export default function Team() {
   return (
     <>
       <PageMeta
-        title="Unser Team"
-        description="Premium Fitness in Goeppingen – Lern unsere zertifizierten Trainer kennen. Experten in Strength, Combat Fitness, Mobility und Nutrition."
-        canonical="https://niceathleticclub.de/team"
+        title="Unser Team – Zertifizierte Trainer & Coaches | Nice Athletic Club Göppingen"
+        description="Lern das NAC-Team kennen: Zertifizierte Coaches für CrossFit, HYROX, Personal Training & mehr. Echte Athleten, echte Ergebnisse. Gemeinsam stärker in Göppingen."
+        canonical="https://nicefitness.de/team"
+        ogImage="https://nicefitness.de/images/team/dome.png"
       />
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}>
         {blocks.map((block) => {

@@ -120,9 +120,9 @@ export default function Kurse() {
   return (
     <>
       <PageMeta
-        title="Kurse & Stundenplan"
-        description="Entdecke unser vielfältiges Kursangebot: Strength, HIIT, Combat Fitness, Mobility & mehr. Wöchentlicher Stundenplan mit über 38 Kursen."
-        canonical="https://niceathleticclub.de/kurse"
+        title="Kurse & Stundenplan Göppingen – CrossFit, HYROX & mehr | NAC"
+        description="Kursangebot im Nice Athletic Club Göppingen: CrossFit WODs, HYROX Training, Strength & Conditioning, Mobility – 20+ Einheiten pro Woche, zertifizierte Coaches. Gratis Probetraining buchen!"
+        canonical="https://nicefitness.de/kurse"
       />
 
       <motion.div

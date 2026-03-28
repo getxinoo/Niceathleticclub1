@@ -1,4 +1,4 @@
-import { createHashRouter } from "react-router";
+import { createBrowserRouter } from "react-router";
 
 // ── App Root (providers: Auth, Helmet, Toaster) ───────────────────────────────
 import { AppRoot } from "./components/layout/AppRoot";
@@ -86,7 +86,7 @@ import MemberCoaching   from "./member/pages/MemberCoaching";
  *   ├─ "admin"       → AdminGuard → AdminLayout → ...
  *   └─ "member"      → MemberGuard → MemberLayout → ...
  */
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     // AppRoot haelt AuthProvider + HelmetProvider + Toaster.
     // Expliziter path: "/" stellt sicher, dass AppRoot IMMER im Render-Tree

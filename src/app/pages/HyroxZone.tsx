@@ -21,6 +21,7 @@ import { PageMeta } from "../components/seo/PageMeta";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { DEFAULT_BASE_PLANS, type BasePlan } from "../../data/classes";
 import { cn } from "../../lib/utils";
+import { buildBreadcrumbSchema, buildServiceSchema, buildFaqSchema, SITE_URL } from "../../lib/schema";
 
 // ── Images ──────────────────────────────────────────────────────────────────
 import IMG_HERO from "figma:asset/25ab7f957d222d82bbcb0d0ac4adb54ff41d956e.png";
@@ -313,8 +314,24 @@ export default function HyroxZone() {
   return (
     <>
       <PageMeta
-        title="HYROX Training Göppingen | Nice Athletic Club – Alle 8 Stationen"
-        description="Premium Fitness in Göppingen: HYROX-Training mit allen 8 Stationen – SkiErg, Sled Push, Sled Pull, Burpee Broad Jumps, Rowing, Farmers Carry, Wall Balls. Täglich 5:00–00:00 Uhr."
+        title="HYROX Training Göppingen – Alle 8 Stationen | Nice Athletic Club"
+        description="HYROX Göppingen: Alle 8 Stationen – SkiErg, Sled Push & Pull, Burpees, Rowing, Farmers Carry, Sandbag & Wall Balls. Zertifizierte Coaches, tägliche Sessions. Jetzt Probetraining buchen!"
+        canonical={`${SITE_URL}/hyrox`}
+        ogImage={`${SITE_URL}/images/hyrox/hero.png`}
+        schemas={[
+          buildBreadcrumbSchema([{ name: 'HYROX Zone', url: `${SITE_URL}/hyrox` }]),
+          buildServiceSchema({
+            name: 'HYROX Training Göppingen',
+            description: 'Alle 8 HYROX-Stationen im Nice Athletic Club Göppingen. Training für Open, Pro, Doubles & Relay mit zertifizierten HYROX Coaches.',
+            url: `${SITE_URL}/hyrox`,
+            image: `${SITE_URL}/images/hyrox/hero.png`,
+          }),
+          buildFaqSchema([
+            { question: 'Was ist HYROX?', answer: 'HYROX ist ein weltweiter Fitness-Wettkampf: 8×1 km Laufen kombiniert mit 8 Functional Fitness Stationen (SkiErg, Sled Push, Sled Pull, Burpee Broad Jumps, Rowing, Farmers Carry, Sandbag Lunges, Wall Balls).' },
+            { question: 'Gibt es HYROX Training im Nice Athletic Club?', answer: 'Ja! Wir haben eine vollständige HYROX-Zone mit allen Stationen und bieten regelmäßige HYROX-Sessions an.' },
+            { question: 'Für wen ist HYROX geeignet?', answer: 'HYROX ist für alle Fitness-Level geeignet. Ob Anfänger oder Wettkampf-Athlet – wir skalieren das Training auf dein Level.' },
+          ]),
+        ]}
       />
 
       <HeroSection reduced={reduced} v={v} />

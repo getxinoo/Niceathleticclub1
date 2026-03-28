@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { Link, useSearchParams, useLocation } from "react-router";
 import { motion, useReducedMotion } from "motion/react";
 import {
   ArrowLeft, ArrowRight, Briefcase, Clock, MapPin,
   Zap, Heart, Trophy, Users, Star, ChevronRight, Send,
-  Loader2, Upload, CheckCircle2, X,
+  Loader2, Upload, CheckCircle2, X, Lock, Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageMeta } from "../components/seo/PageMeta";
@@ -312,25 +312,258 @@ function ApplicationForm({ jobId, jobTitle, onClose }: { jobId: number | null; j
   );
 }
 
+// ── No Jobs State ─────────────────────────────────────────────────────────────
+function NoJobsState() {
+  const reduced = useReducedMotion();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+      className="relative py-12 overflow-hidden"
+    >
+      {/* Ghost background text */}
+      <div
+        className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden"
+        aria-hidden="true"
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(5rem, 18vw, 14rem)",
+            lineHeight: 1,
+            color: "transparent",
+            WebkitTextStroke: "1px rgba(202,12,133,0.07)",
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          PAUSE
+        </span>
+      </div>
+
+      {/* Scan line animation */}
+      {!reduced && (
+        <motion.div
+          className="absolute inset-x-0 h-px pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(202,12,133,0.25), transparent)" }}
+          animate={{ top: ["0%", "100%", "0%"] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+
+      {/* Center card */}
+      <div className="relative max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(202,12,133,0.18)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {/* Top glow bar */}
+          <div
+            className="absolute top-0 inset-x-0 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, rgba(202,12,133,0.6), transparent)" }}
+          />
+
+          {/* Corner accents */}
+          <div className="absolute top-0 left-0 w-4 h-4 border-t border-l" style={{ borderColor: "rgba(202,12,133,0.5)" }} />
+          <div className="absolute top-0 right-0 w-4 h-4 border-t border-r" style={{ borderColor: "rgba(202,12,133,0.5)" }} />
+          <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l" style={{ borderColor: "rgba(202,12,133,0.5)" }} />
+          <div className="absolute bottom-0 right-0 w-4 h-4 border-b border-r" style={{ borderColor: "rgba(202,12,133,0.5)" }} />
+
+          {/* Radial glow */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: "radial-gradient(ellipse at 50% 0%, rgba(202,12,133,0.08) 0%, transparent 65%)" }}
+          />
+
+          <div className="relative px-8 pt-12 pb-10 text-center">
+            {/* Icon with pulse ring */}
+            <div className="relative inline-flex items-center justify-center mb-8">
+              {!reduced && (
+                <>
+                  <motion.div
+                    className="absolute rounded-full"
+                    style={{ width: 80, height: 80, border: "1px solid rgba(202,12,133,0.2)" }}
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut" }}
+                  />
+                  <motion.div
+                    className="absolute rounded-full"
+                    style={{ width: 80, height: 80, border: "1px solid rgba(202,12,133,0.15)" }}
+                    animate={{ scale: [1, 1.7, 1], opacity: [0.4, 0, 0.4] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeOut", delay: 0.6 }}
+                  />
+                </>
+              )}
+              <div
+                className="relative flex items-center justify-center"
+                style={{
+                  width: 64,
+                  height: 64,
+                  background: "rgba(202,12,133,0.08)",
+                  border: "1px solid rgba(202,12,133,0.25)",
+                }}
+              >
+                <Lock size={24} style={{ color: "rgba(202,12,133,0.7)" }} />
+              </div>
+            </div>
+
+            {/* Status badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-6"
+              style={{
+                background: "rgba(202,12,133,0.08)",
+                border: "1px solid rgba(202,12,133,0.2)",
+                fontFamily: "var(--font-condensed)",
+                fontSize: "9px",
+                fontWeight: 700,
+                letterSpacing: "0.22em",
+                color: "var(--brand)",
+              }}
+            >
+              <motion.span
+                className="w-1.5 h-1.5 rounded-full inline-block"
+                style={{ background: "var(--brand)" }}
+                animate={reduced ? {} : { opacity: [1, 0.2, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              AKTUELL KEINE STELLEN AUSGESCHRIEBEN
+            </div>
+
+            {/* Headline */}
+            <h3
+              className="text-white mb-4"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(1.5rem, 4vw, 2.2rem)",
+                letterSpacing: "0.03em",
+                lineHeight: 1.1,
+              }}
+            >
+              MOMENTAN WERDEN KEINE<br />
+              <span style={{ WebkitTextStroke: "1.5px rgba(255,255,255,0.5)", color: "transparent" }}>
+                JOBS ODER AUSBILDUNGSPLÄTZE
+              </span>
+              <br />
+              VERGEBEN
+            </h3>
+
+            {/* Body text */}
+            <p className="text-white/45 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
+              Das Team ist aktuell vollständig. Aber wer sagt, dass das so bleibt?<br />
+              Schick uns deine <strong className="text-white/60">Initiativbewerbung</strong> – wir wachsen stetig und melden uns, sobald etwas passt.
+            </p>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 mb-8">
+              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+              <span style={{ fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.2)" }}>
+                TROTZDEM MELDEN?
+              </span>
+              <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.06)" }} />
+            </div>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to="/karriere?apply=init"
+                className="group inline-flex items-center gap-2.5 px-7 py-3.5 text-white transition-all duration-300 active:scale-[0.98]"
+                style={{
+                  background: "var(--brand)",
+                  fontFamily: "var(--font-condensed)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                  border: "none",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--brand-light)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "0 0 24px rgba(202,12,133,0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = "var(--brand)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "none";
+                }}
+              >
+                <Send size={12} />
+                INITIATIVBEWERBUNG
+                <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+
+              <Link
+                to="/kontakt"
+                className="group inline-flex items-center gap-2 px-7 py-3.5 text-white/60 hover:text-white transition-all duration-300 active:scale-[0.98]"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  fontFamily: "var(--font-condensed)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.2)";
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.1)";
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                }}
+              >
+                <Bell size={12} />
+                KONTAKT AUFNEHMEN
+              </Link>
+            </div>
+
+            {/* Bottom hint */}
+            <p className="mt-6 text-white/20 text-xs" style={{ fontFamily: "var(--font-condensed)", letterSpacing: "0.06em" }}>
+              Wir prüfen alle Initiativbewerbungen und melden uns bei passender Gelegenheit.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function Karriere() {
   const reduced = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const applyId = searchParams.get("apply");
 
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [benefits, setBenefits] = useState<Benefit[]>([]);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    setLoading(true);
     api.public.karriere()
       .then((res: any) => {
-        if (res?.jobs) setJobs(res.jobs);
+        // API gibt bereits nur aktive Jobs zurück (PHP filtert server-seitig).
+        // Im Mock-Modus filtert auch _getMockKarriereStore → nur active:true.
+        // Sicherheits-Filter bleibt trotzdem erhalten.
+        if (res?.jobs) setJobs((res.jobs as Job[]).filter((j) => j.active));
         if (res?.benefits) setBenefits(res.benefits);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Daten bei jedem Seitenaufruf (location.key) frisch laden.
+  // So wird der Effekt des Admin-Toggles sofort sichtbar wenn der User
+  // zurück zu /karriere navigiert – ohne kompletten Seiten-Reload.
+  useEffect(() => {
+    loadData();
+  }, [loadData, location.key]);
 
   // Application form mode
   if (applyId) {
@@ -351,9 +584,9 @@ export default function Karriere() {
   return (
     <>
       <PageMeta
-        title="Karriere"
-        description="Premium Fitness in Göppingen – Werde Teil des Nice Athletic Club Teams. Offene Stellen, Benefits und Bewerbungsinfos."
-        canonical="https://niceathleticclub.de/karriere"
+        title="Jobs & Karriere im Fitnessstudio Göppingen | Nice Athletic Club"
+        description="Werde Teil des NAC-Teams in Göppingen! Offene Stellen als Trainer, Coach & mehr. Bewirb dich jetzt beim Nice Athletic Club – wir suchen Menschen mit Leidenschaft für Fitness."
+        canonical="https://nicefitness.de/karriere"
       />
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}>
@@ -394,21 +627,7 @@ export default function Karriere() {
                 {jobs.map((job) => <JobCard key={job.id} job={job} />)}
               </div>
             ) : (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-                className="p-8 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <Briefcase size={32} className="mx-auto mb-4" style={{ color: "rgba(255,255,255,0.15)" }} />
-                <p className="text-white/60 mb-2" style={{ fontFamily: "var(--font-display)", fontSize: "1.3rem" }}>
-                  AKTUELL SUCHEN WIR KEINE NEUEN MITARBEITER
-                </p>
-                <p className="text-white/35 text-sm mb-6 max-w-md mx-auto">
-                  Aber keine Sorge – melde dich bei uns mit einer Initiativbewerbung. Wir freuen uns immer über talentierte Menschen!
-                </p>
-                <Link to="/karriere?apply=init"
-                  className="group inline-flex items-center gap-2 px-6 py-3 text-white transition-all duration-200 active:scale-[0.98]"
-                  style={{ background: "var(--brand)", fontFamily: "var(--font-condensed)", fontSize: "12px", fontWeight: 700, letterSpacing: "0.14em" }}>
-                  <Send size={12} /> INITIATIVBEWERBUNG
-                </Link>
-              </motion.div>
+              <NoJobsState />
             )}
 
             {/* Initiativbewerbung */}

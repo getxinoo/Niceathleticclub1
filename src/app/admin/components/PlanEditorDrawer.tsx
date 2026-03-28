@@ -461,10 +461,6 @@ export function PlanEditorDrawer({
                     <Input value={period} onChange={setPeriod} placeholder="pro Monat" />
                   </div>
                   <div>
-                    <FieldLabel>Blaulicht-Rabatt (€)</FieldLabel>
-                    <Input type="number" value={blaulicht} onChange={setBlaulicht} placeholder="10" />
-                  </div>
-                  <div>
                     <FieldLabel>Schüler/Student-Preis (€)</FieldLabel>
                     <Input type="number" value={studentPrice} onChange={setStudentPrice} placeholder="49" />
                   </div>

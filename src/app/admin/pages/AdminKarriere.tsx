@@ -40,6 +40,7 @@ export default function AdminKarriere() {
   const [editBenefit, setEditBenefit] = useState<Benefit | null>(null);
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -73,6 +74,17 @@ export default function AdminKarriere() {
       toast.success("Job gelöscht.");
       load();
     } catch { toast.error("Fehler."); }
+  };
+
+  const toggleJobActive = async (job: Job) => {
+    if (!job.id) return;
+    setTogglingId(job.id);
+    try {
+      await api.admin.karriere.saveJob({ ...job, active: !job.active });
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, active: !j.active } : j));
+      toast.success(job.active ? "Job ausgeblendet." : "Job wieder sichtbar.");
+    } catch { toast.error("Fehler beim Umschalten."); }
+    setTogglingId(null);
   };
 
   // ── Benefit CRUD ──────────────────────────────────────────────────────────
@@ -154,19 +166,48 @@ export default function AdminKarriere() {
 
           <div className="space-y-3">
             {jobs.map(job => (
-              <div key={job.id} className="flex items-center gap-4 p-4"
-                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <div key={job.id} className="flex items-center gap-4 p-4 transition-all duration-200"
+                style={{
+                  background: job.active ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.01)",
+                  border: job.active ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(255,255,255,0.03)",
+                  opacity: job.active ? 1 : 0.6,
+                }}>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="px-2 py-0.5 text-[9px]" style={{ background: "rgba(202,12,133,0.1)", border: "1px solid rgba(202,12,133,0.2)", fontFamily: "var(--font-condensed)", fontWeight: 700, letterSpacing: "0.14em", color: "var(--brand)" }}>
                       {job.department.toUpperCase()}
                     </span>
-                    {!job.active && <span className="text-[9px] text-white/30" style={{ fontFamily: "var(--font-condensed)", fontWeight: 700, letterSpacing: "0.1em" }}>INAKTIV</span>}
+                    {!job.active && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px]"
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontFamily: "var(--font-condensed)", fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)" }}>
+                        <EyeOff size={9} /> AUSGEBLENDET
+                      </span>
+                    )}
                   </div>
                   <p className="text-white text-sm">{job.title}</p>
                   <p className="text-white/30 text-xs mt-0.5">{job.employmentType} · {job.level}</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-1 shrink-0 items-center">
+                  {/* Visibility toggle */}
+                  <button
+                    onClick={() => toggleJobActive(job)}
+                    disabled={togglingId === job.id}
+                    title={job.active ? "Im Frontend ausblenden" : "Im Frontend einblenden"}
+                    className="flex items-center gap-1.5 px-3 py-2 cursor-pointer transition-all duration-200"
+                    style={{
+                      background: job.active ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+                      border: job.active ? "1px solid rgba(34,197,94,0.2)" : "1px solid rgba(255,255,255,0.08)",
+                      color: job.active ? "rgba(134,239,172,0.9)" : "rgba(255,255,255,0.3)",
+                      fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em",
+                      minHeight: "36px",
+                    }}>
+                    {togglingId === job.id
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : job.active
+                        ? <><Eye size={12} /> SICHTBAR</>
+                        : <><EyeOff size={12} /> VERSTECKT</>
+                    }
+                  </button>
                   <button onClick={() => setEditJob({ ...job })} className="p-2 text-white/40 hover:text-white transition-colors cursor-pointer" style={{ background: "none", border: "none" }}>
                     <Pencil size={14} />
                   </button>

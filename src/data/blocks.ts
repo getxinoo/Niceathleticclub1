@@ -1234,9 +1234,9 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       heading: "Öffnungszeiten",
       note: "Unsere Studio ist täglich geöffnet.",
       rows: [
-        { days: "Mo-Fr", hours: "5:00 – 00:00 Uhr", highlight: false },
-        { days: "Sa", hours: "5:00 – 00:00 Uhr", highlight: false },
-        { days: "So", hours: "5:00 – 00:00 Uhr", highlight: false },
+        { days: "Mo-Fr", hours: "05:00 – 00:00 Uhr", highlight: false },
+        { days: "Sa", hours: "05:00 – 00:00 Uhr", highlight: false },
+        { days: "So", hours: "05:00 – 00:00 Uhr", highlight: false },
       ],
     } satisfies OpeningHoursBlockData,
     fields: [
@@ -1444,7 +1444,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       ],
       addressHeading: "Adresse",
       addressLine1: "Nice Athletic Club",
-      addressLine2: "Manfred-Wörner-Straße 104",
+      addressLine2: "Robert-Bosch-Straße 5",
       addressLine3: "73037 Göppingen",
       contactHeading: "Kontakt",
       contactEmail: "info@niceathleticclub.de",
@@ -1473,7 +1473,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       ]},
       { key: "addressHeading", label: "Adresse Titel",      type: "text", placeholder: "Adresse" },
       { key: "addressLine1",   label: "Adresszeile 1",      type: "text", placeholder: "Nice Athletic Club" },
-      { key: "addressLine2",   label: "Adresszeile 2",      type: "text", placeholder: "Manfred-Wörner-Straße 104" },
+      { key: "addressLine2",   label: "Adresszeile 2",      type: "text", placeholder: "Robert-Bosch-Straße 5" },
       { key: "addressLine3",   label: "Adresszeile 3",      type: "text", placeholder: "73037 Göppingen" },
       { key: "contactHeading", label: "Kontakt Titel",      type: "text", placeholder: "Kontakt" },
       { key: "contactEmail",   label: "E-Mail",             type: "text", placeholder: "info@niceathleticclub.de" },
@@ -1666,7 +1666,7 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
         ],
         addressHeading: "Adresse",
         addressLine1: "Nice Athletic Club",
-        addressLine2: "Manfred-Wörner-Straße 104",
+        addressLine2: "Robert-Bosch-Straße 5",
         addressLine3: "73037 Göppingen",
         contactHeading: "Kontakt",
         contactEmail: "info@niceathleticclub.de",
@@ -1690,7 +1690,7 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
         videoMuted: true,
         videoStartTime: 0,
         videoEndTime: 0,
-        label: "100% Performance · 100% Flexibilität",
+        label: "Monatlich kündbar. 100% Performance · 100% Flexibilität",
         headlineLine1Normal: "UNSERE",
         headlineLine1Outline: "TARIFE",
         headlineLine2Normal: "",
@@ -1903,7 +1903,7 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
 
   // ── Impressum  /impressum ────────────────────────────────────────────────────
   impressum: [
-    { id: "impressum-content", type: "legal-content", data: { heading: "Impressum", pageType: "impressum", content: "Angaben gemäß § 5 TMG\n\nNice Athletic Club Göppingen\nSchillerstraße 23\n73033 Göppingen\n\nE-Mail: info@nice-fitness.de" } satisfies LegalContentBlockData },
+    { id: "impressum-content", type: "legal-content", data: { heading: "Impressum", pageType: "impressum", content: "Angaben gemäß § 5 TMG\n\nNice Athletic Club Göppingen\nRobert-Bosch-Straße 5\n73037 Göppingen\n\nE-Mail: info@nice-fitness.de" } satisfies LegalContentBlockData },
   ],
 
   // ── Datenschutz  /datenschutz ────────────────────────────────────────────────
@@ -1924,8 +1924,8 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
     { id: "wp-how",        type: "values-grid",   data: { heading: "So nutzt du Wellpass bei uns.", subtitle: "In 4 einfachen Schritten zum Training im Nice Athletic Club.", mobileLayout: "stack", values: [{ icon: "Briefcase", title: "01 – Arbeitgeber aktiviert", description: "Dein Unternehmen schließt einen Rahmenvertrag mit EGYM Wellpass ab – vollständig digital." }, { icon: "Zap", title: "02 – App herunterladen", description: "EGYM Wellpass App (iOS/Android) installieren und mit Firmen-E-Mail registrieren." }, { icon: "MapPin", title: "03 – Nice Athletic Club", description: "In der App nach 'Nice Athletic Club Göppingen' suchen – wir sind offiziell gelistet." }, { icon: "Star", title: "04 – Sofort loslegen", description: "Check-in per App am Empfang und trainiere los. Voller Zugang zu allen Bereichen." }] } satisfies ValuesGridBlockData },
     { id: "wp-facilities", type: "features-list", data: { heading: "Alles inklusive – kein Kompromiss.", subtitle: "Premium Training auf über 2.500 m² in Göppingen. Zugang je nach Wellpass-Kontingent.", layout: "grid", mobileLayout: "stack", features: [{ icon: "Dumbbell", title: "Gerätetraining & Freifläche", description: "Premium Kraft- und Cardiogeräte auf 800 m². Vollständig inklusive bei allen Kontingenten." }, { icon: "Target", title: "HYROX Zone", description: "SkiErg, Ruderergometer, Sled & Farmers Carry für HYROX-Training." }, { icon: "Users", title: "Gruppenkurse & Yoga", description: "Über 20 Kurse pro Woche: Yoga, HIIT, Bootcamp, Mobility – mit qualifizierten Trainern." }, { icon: "Heart", title: "Sauna & Wellness", description: "Finn-Sauna, Dampfbad und Relaxzone. Ab Kontingent L/XL inklusive." }, { icon: "Award", title: "CrossFit GP", description: "Unsere CrossFit Box mit Rig, Barbells und Kettlebells. Je nach Kontingent." }, { icon: "Shield", title: "Kostenfreie Parkplätze", description: "Direkt vor dem Eingang. 5 Minuten vom Göppinger Zentrum entfernt." }] } satisfies FeaturesListBlockData },
     { id: "wp-plans",      type: "trust-badges",  data: { heading: "Wellpass Kontingente im Überblick", badges: [{ icon: "Shield", text: "Wellpass S – 4 Besuche/Monat – Gerätebereich & Freifläche" }, { icon: "Zap", text: "Wellpass M – 8 Besuche/Monat – Geräte + 1 Kursbesuch" }, { icon: "Star", text: "Wellpass L – Unlimitiert – Alle Kurse + Sauna & Wellness" }, { icon: "Award", text: "Wellpass XL – Unlimitiert+ – CrossFit + alle Premium-Partner" }] } satisfies TrustBadgesBlockData },
-    { id: "wp-faq",        type: "faq",           data: { heading: "Häufige Fragen – Wellpass beim Nice Athletic Club", questions: [{ question: "Ist der Nice Athletic Club ein offizieller EGYM Wellpass Partner?", answer: "Ja! Wir sind ein verifizierter EGYM Wellpass Partner. Du findest uns direkt in der Wellpass App unter 'Göppingen'." }, { question: "Welche Bereiche kann ich mit Wellpass nutzen?", answer: "Je nach Kontingent (S/M/L/XL) hast du Zugang zu Gerätebereich, HYROX Zone, Gruppenkursen und Sauna. Details in der Wellpass App." }, { question: "Brauche ich einen zusätzlichen Mitgliedsvertrag?", answer: "Nein! Dein aktives EGYM Wellpass Abonnement berechtigt dich vollständig. Kein separater Vertrag nötig." }, { question: "Wie viele Besuche sind pro Monat möglich?", answer: "S = 4/Monat, M = 8/Monat, L & XL = unlimitiert. Wir empfehlen Kontingent L oder XL für unbegrenztes Training." }, { question: "Mein Arbeitgeber bietet Wellpass noch nicht an – was tun?", answer: "Sprich deine HR-Abteilung an! Bis 600 €/MA/Jahr steuerfrei (§ 3 Nr. 34 EStG). Bis dahin: Mitgliedschaft ab 39 €/Monat." }, { question: "Zu welchen Zeiten kann ich trainieren?", answer: "Mo–Fr 06:00–23:00, Sa–So 08:00–22:00 Uhr. Als Wellpass-Mitglied gelten dieselben Öffnungszeiten wie für reguläre Mitglieder." }] } satisfies FaqBlockData },
-    { id: "wp-location",   type: "location-map",  data: { heading: "Nice Athletic Club – Göppingen", address: "Hohenstaufenstraße 1, 73033 Göppingen", googleMapsUrl: "https://maps.google.com/?q=Nice+Athletic+Club+Göppingen", googleMapsEmbedUrl: "", phone: "+49 7161 / XXX XXX", email: "info@nice-fitness.de", showOpeningHours: true } satisfies LocationMapBlockData },
+    { id: "wp-faq",        type: "faq",           data: { heading: "Häufige Fragen – Wellpass beim Nice Athletic Club", questions: [{ question: "Ist der Nice Athletic Club ein offizieller EGYM Wellpass Partner?", answer: "Ja! Wir sind ein verifizierter EGYM Wellpass Partner. Du findest uns direkt in der Wellpass App unter 'Göppingen'." }, { question: "Welche Bereiche kann ich mit Wellpass nutzen?", answer: "Je nach Kontingent (S/M/L/XL) hast du Zugang zu Gerätebereich, HYROX Zone, Gruppenkursen und Sauna. Details in der Wellpass App." }, { question: "Brauche ich einen zusätzlichen Mitgliedsvertrag?", answer: "Nein! Dein aktives EGYM Wellpass Abonnement berechtigt dich vollständig. Kein separater Vertrag nötig." }, { question: "Wie viele Besuche sind pro Monat möglich?", answer: "S = 4/Monat, M = 8/Monat, L & XL = unlimitiert. Wir empfehlen Kontingent L oder XL für unbegrenztes Training." }, { question: "Mein Arbeitgeber bietet Wellpass noch nicht an – was tun?", answer: "Sprich deine HR-Abteilung an! Bis 600 €/MA/Jahr steuerfrei (§ 3 Nr. 34 EStG). Bis dahin: Mitgliedschaft ab 39 €/Monat." }, { question: "Zu welchen Zeiten kann ich trainieren?", answer: "Täglich 05:00–00:00 Uhr – auch an Wochenenden und Feiertagen. Als Wellpass-Mitglied gelten dieselben Öffnungszeiten wie für reguläre Mitglieder." }] } satisfies FaqBlockData },
+    { id: "wp-location",   type: "location-map",  data: { heading: "Nice Athletic Club – Göppingen", address: "Robert-Bosch-Straße 5, 73037 Göppingen", googleMapsUrl: "https://maps.google.com/?q=Nice+Athletic+Club+Göppingen", googleMapsEmbedUrl: "", phone: "+49 7161 9163663", email: "info@nice-fitness.de", showOpeningHours: true } satisfies LocationMapBlockData },
     { id: "wp-cta",        type: "cta",           data: { label: "Jetzt loslegen", headlineNormal: "WELLPASS?", headlineOutline: "NICE.", subtitle: "Hast du EGYM Wellpass über deinen Arbeitgeber? Dann check dich ein und trainiere noch heute im Nice Athletic Club Göppingen.", btn1Label: "Wellpass App öffnen", btn1Url: "https://de.egym-wellpass.com", btn2Label: "Kostenloses Probetraining", btn2Url: "/probetraining" } satisfies CtaBlockData },
   ],
 };

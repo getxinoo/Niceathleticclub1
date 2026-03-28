@@ -22,6 +22,7 @@ import {
 import { PageMeta } from "../components/seo/PageMeta";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { TIMETABLE, type TimetableEntry, type WeekDay } from "../../data/team";
+import { buildBreadcrumbSchema, buildServiceSchema, buildFaqSchema, SITE_URL } from "../../lib/schema";
 
 // ── CrossFit GP Hero Image ────────────────────────────────────────────────────
 import crossfitHeroImg from "figma:asset/18f8b000a6830c4e5c290c3ac9791507dff42cb0.png";
@@ -220,9 +221,25 @@ export default function CrossfitGP() {
   return (
     <>
       <PageMeta
-        title="CrossFit GP – Nice Athletic Club"
-        description="Premium Fitness in Göppingen – CrossFit Workouts, Hyrox Training, Olympic Lifting und Open Gym mit zertifizierten Coaches und starker Community im Nice Athletic Club."
-        canonical="https://niceathleticclub.de/crossfit-gp"
+        title="CrossFit Göppingen – Affiliate Box & WODs täglich | Nice Athletic Club"
+        description="CrossFit GP im Nice Athletic Club Göppingen: WODs, Olympic Lifting, Sled Work & mehr – certified Coaches, starke Community, täglich geöffnet. Gratis Probetraining jetzt buchen!"
+        canonical={`${SITE_URL}/crossfit-gp`}
+        ogImage={`${SITE_URL}/images/crossfit/hero.png`}
+        schemas={[
+          buildBreadcrumbSchema([{ name: 'CrossFit GP', url: `${SITE_URL}/crossfit-gp` }]),
+          buildServiceSchema({
+            name: 'CrossFit Göppingen – Affiliate Box',
+            description: 'Certified CrossFit-Affiliate im Nice Athletic Club Göppingen. Tägliche WODs, Olympic Lifting, Sled Pushes, Box Jumps & Kettlebell Swings.',
+            url: `${SITE_URL}/crossfit-gp`,
+            image: `${SITE_URL}/images/crossfit/hero.png`,
+            priceRange: '€€',
+          }),
+          buildFaqSchema([
+            { question: 'Muss ich für CrossFit fit sein?', answer: 'Nein – CrossFit im Nice Athletic Club ist für alle Levels. Jede Übung wird skaliert, sodass Anfänger genauso trainieren können wie Erfahrene.' },
+            { question: 'Wie oft kann ich CrossFit trainieren?', answer: 'Mit deiner NAC-Mitgliedschaft hast du unbegrenzten Zugang zu allen CrossFit-Klassen und Open Gym.' },
+            { question: 'Ist CrossFit als Anfänger sinnvoll?', answer: 'Ja. Unsere certified Coaches erklären jede Bewegung, und alle WODs werden an dein Level angepasst.' },
+          ]),
+        ]}
       />
 
       <motion.div

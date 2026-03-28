@@ -261,9 +261,9 @@ export default function Presse() {
   return (
     <>
       <PageMeta
-        title="Presse"
-        description="Presse- und Medieninformationen des Nice Athletic Club Goeppingen. Pressekontakt, Bildmaterial und Pressemitteilungen."
-        canonical="https://niceathleticclub.de/presse"
+        title="Presse & Medien | Nice Athletic Club Göppingen"
+        description="Presseinformationen, Bildmaterial und Kontakt für Medien: Nice Athletic Club Göppingen – Deutschlands spannendste neue Gym-Story. CrossFit, HYROX & Premium Fitness im Industriehallen-Flair."
+        canonical="https://nicefitness.de/presse"
       />
 
       <motion.div

@@ -36,8 +36,9 @@ export default function Impressum() {
     <>
       <PageMeta
         title="Impressum"
-        description="Impressum der MK Fitness & Strength GmbH – Nice Athletic Club, Göppingen. Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz)."
-        canonical="https://niceathleticclub.de/impressum"
+        description="Impressum der MK Fitness & Strength GmbH – Nice Athletic Club, Robert-Bosch-Straße 5, 73037 Göppingen. Angaben gemäß § 5 DDG."
+        canonical="https://nicefitness.de/impressum"
+        robots="noindex,nofollow"
       />
 
       <motion.div

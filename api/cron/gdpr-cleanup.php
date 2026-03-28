@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 // Secret-Validierung (CLI und HTTP)
 $secret = $_GET['secret'] ?? $_SERVER['argv'][1] ?? '';
-if (str_starts_with((string)$secret, '--secret=')) {
+if (strpos((string)$secret, '--secret=') === 0) {
     $secret = substr((string)$secret, 9);
 }
 

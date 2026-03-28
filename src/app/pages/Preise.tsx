@@ -179,7 +179,7 @@ function HeroSection({ data }: { data: HeroBlockData }) {
             {/* Label */}
             <motion.div variants={v.fadeUp} custom={0} className="flex justify-center">
               <SectionLabel center>
-                {data.label || "100% Performance · 100% Flexibilität"}
+                {data.label || "Monatlich kündbar. 100% Performance · 100% Flexibilität"}
               </SectionLabel>
             </motion.div>
 
@@ -761,9 +761,9 @@ export default function Preise() {
   return (
     <>
       <PageMeta
-        title="Mitgliedschaft & Preise | Nice Athletic Club Göppingen"
-        description="Premium Fitness in Göppingen – ehrliche Preise ab 39 €/Monat. Modulare Tarife für CrossFit, HYROX & Freies Training. Keine Mindestlaufzeit, monatlich kündbar."
-        canonical="https://niceathleticclub.de/preise"
+        title="Mitgliedschaft & Preise Göppingen – Fitness ohne Mindestlaufzeit | NAC"
+        description="Nice Athletic Club Preise: Flexible Mitgliedschaften ab 39 €/Monat – CrossFit, HYROX & Athletic Bereich inklusive. Monatlich kündbar, kein Risiko. Jetzt Probetraining buchen!"
+        canonical="https://nicefitness.de/preise"
       />
 
       <motion.div

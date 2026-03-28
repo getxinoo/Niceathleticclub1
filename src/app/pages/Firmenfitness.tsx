@@ -257,9 +257,9 @@ export default function Firmenfitness() {
   return (
     <>
       <PageMeta
-        title="Firmenfitness – Nice Athletic Club"
-        description="Premium Firmenfitness in Göppingen: Steuerfreie Gesundheitsförderung (§ 3 Nr. 34 EStG), Team-Workouts, BGM-konforme Kurse, Personal Training für Führungskräfte und vergünstigte Firmenmitgliedschaften."
-        canonical="https://niceathleticclub.de/firmenfitness"
+        title="Firmenfitness Göppingen – Betriebliche Gesundheitsförderung | NAC"
+        description="Firmenfitness im NAC Göppingen: Steuerfreie BGF bis 600 €/Jahr (§ 3 Nr. 34 EStG), Team-Workouts, CrossFit & HYROX. Vergünstigte Firmentarife für Unternehmen in der Region Göppingen."
+        canonical="https://nicefitness.de/firmenfitness"
       />
 
       <motion.div

@@ -975,9 +975,10 @@ export default function Studio() {
   return (
     <>
       <PageMeta
-        title="Das Studio – Nice Athletic Club Göppingen"
-        description="Entdecke das Nice Athletic Club Studio in Göppingen: Athletic Area, CrossFit Zone, Hyrox Zone, Premium Duschen und die Nice Theke. Täglich geöffnet 05:00–00:00 Uhr."
-        canonical="https://niceathleticclub.de/studio"
+        title="Das Studio – 1.500 qm Premium Fitness Göppingen | Nice Athletic Club"
+        description="Nice Athletic Club Studio Göppingen: Athletic Area, CrossFit-Box, HYROX-Zone, Nice Theke & Premium Duschen auf 1.500+ qm. Industriehallen-Flair, Mo–Fr 06–23 Uhr, Sa–So 08–21 Uhr."
+        canonical="https://nicefitness.de/studio"
+        ogImage="https://nicefitness.de/images/studio/entrance.png"
       />
 
       <motion.div

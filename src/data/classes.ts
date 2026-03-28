@@ -182,7 +182,7 @@ export const DEFAULT_ADDONS: AddOn[] = [
     options: [
       { label: "Sauna-Zugang", price: 10 },
     ],
-    description: "Sauna-Nutzung im Nice Athletic Club.",
+    description: "Sauna-Nutzung im Nice Fitness & Spa Eislingen.",
     sortOrder: 1,
   },
 ];

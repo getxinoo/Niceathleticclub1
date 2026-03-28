@@ -86,6 +86,57 @@ const _mockOnboardedStaff: any[] = [];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _mockTeamProfiles: any[] | null = null;
 
+// ── Karriere Mock-Store (localStorage-basiert, cross-tab) ─────────────────────
+// Speichert Jobs & Benefits im localStorage, damit Admin- und Frontend-Tab
+// denselben Zustand sehen, ohne einen echten Server zu benötigen.
+const KARRIERE_LS_KEY = "nac_mock_karriere";
+
+const KARRIERE_SEED_JOBS = [
+  { id: 1, title: "Personal Trainer / Coach", department: "Training", employmentType: "Vollzeit / Teilzeit", level: "Erfahren", location: "Göppingen, BW", description: "Du betreust unsere Mitglieder im 1:1 und kleinen Gruppen, erstellst individuelle Trainingspläne und bist Motivator auf dem Weg zu persönlichen Bestleistungen.", tags: ["PT-Lizenz", "Sport-Studium o.ä.", "Leidenschaft fürs Training"], active: true, sortOrder: 0 },
+  { id: 2, title: "Kursleiter:in (CrossFit & HIIT)", department: "Training", employmentType: "Minijob / Teilzeit", level: "Erfahren", location: "Göppingen, BW", description: "Du leitest begeistert CrossFit- und HIIT-Kurse, motivierst eine großartige Community und bringst frische Ideen in unseren Kursplan ein.", tags: ["CrossFit L1+", "Kurs-Erfahrung", "Teamplayer"], active: true, sortOrder: 1 },
+  { id: 3, title: "Mitarbeiter:in Empfang & Service", department: "Service", employmentType: "Teilzeit / Minijob", level: "Quereinsteiger willkommen", location: "Göppingen, BW", description: "Als erste Anlaufstelle für unsere Mitglieder repräsentierst du den NAC-Spirit.", tags: ["Serviceorientierung", "MS Office", "Kommunikationsstärke"], active: true, sortOrder: 2 },
+  { id: 4, title: "Social Media & Content Creator", department: "Marketing", employmentType: "Freelance / Teilzeit", level: "Junior – Senior", location: "Göppingen, BW", description: "Du erstellst hochwertigen Content für Instagram, Facebook & Co.", tags: ["Instagram / Reels", "Fotografie / Video", "Kreativität"], active: true, sortOrder: 3 },
+];
+const KARRIERE_SEED_BENEFITS = [
+  { id: 1, icon: "Zap", title: "Freie Mitgliedschaft", description: "Trainiere kostenlos in allen NAC-Bereichen.", sortOrder: 0, active: true },
+  { id: 2, icon: "Heart", title: "Teamspirit pur", description: "Flache Hierarchien, ehrliches Feedback.", sortOrder: 1, active: true },
+  { id: 3, icon: "Trophy", title: "Weiterbildung", description: "Wir fördern Zertifizierungen und Seminare.", sortOrder: 2, active: true },
+  { id: 4, icon: "Users", title: "Flexible Zeiten", description: "Work-Life-Balance ist uns ernst.", sortOrder: 3, active: true },
+  { id: 5, icon: "Star", title: "Attraktive Vergütung", description: "Faire Bezahlung mit Entwicklungsperspektive.", sortOrder: 4, active: true },
+  { id: 6, icon: "MapPin", title: "Göppingen & Umgebung", description: "Zentraler Standort mit guter Verkehrsanbindung.", sortOrder: 5, active: true },
+];
+const KARRIERE_SEED_APPLICANTS = [
+  { id: 1, jobId: 1, firstName: "Max", lastName: "Mustermann", email: "max@example.com", phone: "+49 176 1234", status: "probetraining", createdAt: "2026-03-01T10:00:00Z", source: "Instagram", coverLetter: "Leidenschaftlicher Trainer mit 5 Jahren Erfahrung." },
+  { id: 2, jobId: 2, firstName: "Laura", lastName: "Berger", email: "laura@example.com", phone: "+49 151 5678", status: "neu", createdAt: "2026-03-08T14:00:00Z", source: "Website" },
+  { id: 3, jobId: 3, firstName: "Tim", lastName: "Schulz", email: "tim@example.com", status: "gesichtet", createdAt: "2026-03-05T09:00:00Z", source: "Empfehlung" },
+  { id: 4, jobId: 4, firstName: "Mia", lastName: "Hoffmann", email: "mia@example.com", phone: "+49 170 9012", status: "telefonat", createdAt: "2026-03-03T16:00:00Z", source: "Indeed" },
+  { id: 5, jobId: null, firstName: "Felix", lastName: "Wagner", email: "felix@example.com", status: "neu", createdAt: "2026-03-09T11:00:00Z", source: "Website", coverLetter: "Initiativbewerbung als Yoga-Trainer." },
+  { id: 6, jobId: 1, firstName: "Lukas", lastName: "Fit", email: "lukas.fit@gmail.com", phone: "+49 176 5555 1234", status: "probetraining", createdAt: "2026-03-07T09:30:00Z", source: "Empfehlung", city: "Göppingen", profession: "Personal Trainer", coverLetter: "Ich bin seit 6 Jahren leidenschaftlicher Fitness-Trainer mit A-Lizenz und CrossFit L2 Zertifizierung. Ich würde mich freuen, Teil des NAC-Teams zu werden!" },
+];
+
+/** Liest den Karriere-Store aus localStorage; fällt auf Seed-Daten zurück */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _getMockKarriereStore(): { jobs: any[]; benefits: any[]; applicants: any[] } {
+  try {
+    const raw = localStorage.getItem(KARRIERE_LS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.jobs) return parsed;
+    }
+  } catch { /* fall through */ }
+  return {
+    jobs: KARRIERE_SEED_JOBS.map(j => ({ ...j })),
+    benefits: KARRIERE_SEED_BENEFITS.map(b => ({ ...b })),
+    applicants: KARRIERE_SEED_APPLICANTS.map(a => ({ ...a })),
+  };
+}
+
+/** Speichert den Karriere-Store in localStorage */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _setMockKarriereStore(store: { jobs: any[]; benefits: any[]; applicants: any[] }) {
+  try { localStorage.setItem(KARRIERE_LS_KEY, JSON.stringify(store)); } catch { /* noop */ }
+}
+
 // Map team profile slug → staff user_id for linking
 const _profileUserMap: Record<string, string> = {
   mimi: "3", dome: "2", jana: "4", lydi: "7", leo: "8",
@@ -157,7 +208,10 @@ function notifyMockActive() {
 /** Gibt Mock-Daten für GET-Requests oder simulierte Erfolgsantworten für Schreiboperationen zurück */
 async function getMockFallback<T>(endpoint: string, method?: string, body?: string): Promise<T | null> {
   try {
-    const ep = endpoint.split("?")[0];
+    // Normalize: strip .php extension for forward-compat (old URLs still work in mock)
+    const _normalizedEndpoint = endpoint.replace(/\.php(\?|$)/, (_, q) => q ?? "");
+    const ep = _normalizedEndpoint.split("?")[0];
+    endpoint = _normalizedEndpoint; // shadow for all downstream checks
     const isWrite = method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE";
 
     // ── GET: Vollständige Mock-Daten ────────────────────────────────────────
@@ -296,7 +350,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         company_zip:    "73037",
         company_city:   "Göppingen",
         company_email:  "info@nice-fitness.de",
-        vat_id:         "DE123456789",
+        vat_id:         "DE320247039",
         company_court:  "Amtsgericht Ulm",
         company_hrb:    "HRB 737370",
         ceo:            "Wilhelm Walter",
@@ -491,30 +545,17 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         "/reviews.php?all=1": { reviews: MOCK_REVIEWS, stats: MOCK_REVIEW_STATS },
         // Pages / Sitebuilder – fallback to seed data from blocks.ts
         "/pages.php": null,  // POST handled in write section below
-        "/karriere.php": {
-          jobs: [
-            { id: 1, title: "Personal Trainer / Coach", department: "Training", employmentType: "Vollzeit / Teilzeit", level: "Erfahren", location: "Göppingen, BW", description: "Du betreust unsere Mitglieder im 1:1 und kleinen Gruppen, erstellst individuelle Trainingspläne und bist Motivator auf dem Weg zu persönlichen Bestleistungen.", tags: ["PT-Lizenz", "Sport-Studium o.ä.", "Leidenschaft fürs Training"], active: true, sortOrder: 0 },
-            { id: 2, title: "Kursleiter:in (CrossFit & HIIT)", department: "Training", employmentType: "Minijob / Teilzeit", level: "Erfahren", location: "Göppingen, BW", description: "Du leitest begeistert CrossFit- und HIIT-Kurse, motivierst eine großartige Community und bringst frische Ideen in unseren Kursplan ein.", tags: ["CrossFit L1+", "Kurs-Erfahrung", "Teamplayer"], active: true, sortOrder: 1 },
-            { id: 3, title: "Mitarbeiter:in Empfang & Service", department: "Service", employmentType: "Teilzeit / Minijob", level: "Quereinsteiger willkommen", location: "Göppingen, BW", description: "Als erste Anlaufstelle für unsere Mitglieder repräsentierst du den NAC-Spirit.", tags: ["Serviceorientierung", "MS Office", "Kommunikationsstärke"], active: true, sortOrder: 2 },
-            { id: 4, title: "Social Media & Content Creator", department: "Marketing", employmentType: "Freelance / Teilzeit", level: "Junior – Senior", location: "Göppingen, BW", description: "Du erstellst hochwertigen Content für Instagram, Facebook & Co.", tags: ["Instagram / Reels", "Fotografie / Video", "Kreativität"], active: true, sortOrder: 3 },
-          ],
-          benefits: [
-            { id: 1, icon: "Zap", title: "Freie Mitgliedschaft", description: "Trainiere kostenlos in allen NAC-Bereichen.", sortOrder: 0, active: true },
-            { id: 2, icon: "Heart", title: "Teamspirit pur", description: "Flache Hierarchien, ehrliches Feedback.", sortOrder: 1, active: true },
-            { id: 3, icon: "Trophy", title: "Weiterbildung", description: "Wir fördern Zertifizierungen und Seminare.", sortOrder: 2, active: true },
-            { id: 4, icon: "Users", title: "Flexible Zeiten", description: "Work-Life-Balance ist uns ernst.", sortOrder: 3, active: true },
-            { id: 5, icon: "Star", title: "Attraktive Vergütung", description: "Faire Bezahlung mit Entwicklungsperspektive.", sortOrder: 4, active: true },
-            { id: 6, icon: "MapPin", title: "Göppingen & Umgebung", description: "Zentraler Standort mit guter Verkehrsanbindung.", sortOrder: 5, active: true },
-          ],
-          applicants: [
-            { id: 1, jobId: 1, firstName: "Max", lastName: "Mustermann", email: "max@example.com", phone: "+49 176 1234", status: "probetraining", createdAt: "2026-03-01T10:00:00Z", source: "Instagram", coverLetter: "Leidenschaftlicher Trainer mit 5 Jahren Erfahrung." },
-            { id: 2, jobId: 2, firstName: "Laura", lastName: "Berger", email: "laura@example.com", phone: "+49 151 5678", status: "neu", createdAt: "2026-03-08T14:00:00Z", source: "Website" },
-            { id: 3, jobId: 3, firstName: "Tim", lastName: "Schulz", email: "tim@example.com", status: "gesichtet", createdAt: "2026-03-05T09:00:00Z", source: "Empfehlung" },
-            { id: 4, jobId: 4, firstName: "Mia", lastName: "Hoffmann", email: "mia@example.com", phone: "+49 170 9012", status: "telefonat", createdAt: "2026-03-03T16:00:00Z", source: "Indeed" },
-            { id: 5, jobId: null, firstName: "Felix", lastName: "Wagner", email: "felix@example.com", status: "neu", createdAt: "2026-03-09T11:00:00Z", source: "Website", coverLetter: "Initiativbewerbung als Yoga-Trainer." },
-            { id: 6, jobId: 1, firstName: "Lukas", lastName: "Fit", email: "lukas.fit@gmail.com", phone: "+49 176 5555 1234", status: "probetraining", createdAt: "2026-03-07T09:30:00Z", source: "Empfehlung", city: "Göppingen", profession: "Personal Trainer", coverLetter: "Ich bin seit 6 Jahren leidenschaftlicher Fitness-Trainer mit A-Lizenz und CrossFit L2 Zertifizierung. Ich würde mich freuen, Teil des NAC-Teams zu werden!" },
-          ],
-        },
+        // ── Karriere: IIFE liest immer frisch aus dem mutablen localStorage-Store ──
+        // Public GET (/karriere) → nur aktive Jobs zurückgeben (wie PHP-Backend)
+        // Admin GET (/karriere?admin=1) → alle Jobs (handled im special-case block unten)
+        "/karriere.php": (() => {
+          const store = _getMockKarriereStore();
+          return {
+            jobs: store.jobs.filter((j: any) => j.active),
+            benefits: store.benefits.filter((b: any) => b.active),
+            applicants: store.applicants,
+          };
+        })(),
         "/karriere.php?action=shifts": [
           { id: 1, staffId: "2", staffName: "Dome Fuchs", date: "2026-03-09", startTime: "06:00", endTime: "14:00", role: "Trainer", status: "bestaetigt" },
           { id: 2, staffId: "3", staffName: "Michael Kraus", date: "2026-03-09", startTime: "14:00", endTime: "22:00", role: "Trainer", status: "geplant" },
@@ -545,55 +586,74 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         ],
       };
 
-      // Karriere shifts special case (query param handling)
-      if (endpoint.includes("/karriere.php") && endpoint.includes("action=shifts")) {
+      // ── Normalize getMap keys: strip .php so clean URLs and .php URLs both match ──
+      for (const _k of Object.keys(getMap)) {
+        const _nk = _k.replace(/\.php(\?|$)/, (_, q: string) => q || "");
+        if (_nk !== _k) { (getMap as Record<string,unknown>)[_nk] = getMap[_k]; }
+      }
+
+      // ── Karriere: Admin GET (/karriere?admin=1) → alle Jobs ──────────────────
+      if (endpoint.includes("/karriere") && endpoint.includes("admin=1")) {
         notifyMockActive();
-        return getMap["/karriere.php?action=shifts"] as T;
+        const store = _getMockKarriereStore();
+        return { jobs: store.jobs, benefits: store.benefits, applicants: store.applicants } as T;
+      }
+
+      // Karriere shifts special case (query param handling)
+      if (endpoint.includes("/karriere") && endpoint.includes("action=shifts")) {
+        notifyMockActive();
+        return getMap["/karriere?action=shifts"] as T;
       }
 
       // Absences special cases
-      if (endpoint.includes("/absences.php") && endpoint.includes("budgets")) {
+      if (endpoint.includes("/absences") && endpoint.includes("budgets")) {
         notifyMockActive();
-        return getMap["/absences.php?budgets"] as T;
+        return getMap["/absences?budgets"] as T;
       }
-      if (endpoint.includes("/absences.php") && endpoint.includes("swap_offers")) {
+      if (endpoint.includes("/absences") && endpoint.includes("swap_offers")) {
         notifyMockActive();
-        return getMap["/absences.php?swap_offers"] as T;
+        return getMap["/absences?swap_offers"] as T;
       }
 
       // Finance special cases (type= query params)
-      if (endpoint.includes("/admin/finances.php") && endpoint.includes("type=mandates")) {
+      if (endpoint.includes("/admin/finances") && endpoint.includes("type=mandates")) {
         notifyMockActive();
-        return getMap["/admin/finances.php?type=mandates"] as T;
+        return getMap["/admin/finances?type=mandates"] as T;
       }
-      if (endpoint.includes("/admin/finances.php") && endpoint.includes("type=transactions")) {
+      if (endpoint.includes("/admin/finances") && endpoint.includes("type=transactions")) {
         notifyMockActive();
-        return getMap["/admin/finances.php?type=transactions"] as T;
+        return getMap["/admin/finances?type=transactions"] as T;
       }
-      if (endpoint.includes("/admin/finances.php") && endpoint.includes("type=inkasso")) {
+      if (endpoint.includes("/admin/finances") && endpoint.includes("type=inkasso")) {
         notifyMockActive();
-        return getMap["/admin/finances.php?type=inkasso"] as T;
+        return getMap["/admin/finances?type=inkasso"] as T;
       }
       // Member SEPA
-      if (endpoint.includes("/member/sepa.php") && !endpoint.includes("action=")) {
+      if (endpoint.includes("/member/sepa") && !endpoint.includes("action=")) {
         notifyMockActive();
-        return getMap["/member/sepa.php"] as T;
+        return getMap["/member/sepa"] as T;
       }
 
       // Team special case: ?all=1
-      if (ep === "/team.php" && endpoint.includes("all=1")) {
+      if (ep === "/team" && endpoint.includes("all=1")) {
         notifyMockActive();
-        return getMap["/team.php?all=1"] as T;
+        return getMap["/team?all=1"] as T;
+      }
+
+      // Reviews Admin: ?all=1 → { reviews: [...], stats: {...} }
+      if (ep === "/reviews" && endpoint.includes("all=1")) {
+        notifyMockActive();
+        return getMap["/reviews?all=1"] as T;
       }
 
       // Staff detail: action=detail is a GET but needs dynamic data
-      if (ep === "/admin/users.php" && endpoint.includes("action=detail")) {
+      if (ep === "/admin/users" && endpoint.includes("action=detail")) {
         notifyMockActive();
         const { TEAM_MEMBERS: TMGet } = await import("../data/team");
         _initTeamProfiles(TMGet);
         const dIdGet = endpoint.match(/id=([^&]+)/)?.[1];
         const allStaffGet: any[] = [
-          ...(getMap["/admin/users.php"] as any[] || []),
+          ...(getMap["/admin/users"] as any[] || []),
         ];
         const su = allStaffGet.find((u: any) => String(u.id) === dIdGet);
         if (!su) return { user: null, teamProfile: null, legacyTeamMember: null, syncStatus: { profile_exists: false, legacy_exists: false, mismatches: [] } } as T;
@@ -602,10 +662,19 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return { user: su, teamProfile: dp || null, legacyTeamMember: null, syncStatus: { profile_exists: !!dp, legacy_exists: false, mismatches: [] } } as T;
       }
 
-      // Page Visibility – GET
-      if (ep === "/admin/page-visibility.php") {
+      // Page Visibility – GET (Admin)
+      if (ep === "/admin/page-visibility") {
         notifyMockActive();
-        // Im Mock-Modus: localStorage-State zurückgeben
+        try {
+          const raw = localStorage.getItem("nac_page_visibility");
+          if (raw) return JSON.parse(raw) as T;
+        } catch {}
+        return { visibility: {}, navOverrides: {} } as T;
+      }
+
+      // Page Visibility – GET (Public)
+      if (ep === "/public/page-visibility") {
+        notifyMockActive();
         try {
           const raw = localStorage.getItem("nac_page_visibility");
           if (raw) return JSON.parse(raw) as T;
@@ -615,7 +684,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
 
       // Pages / Sitebuilder – GET ?slug=<slug>
       // Priority: localStorage (admin edits from PageEditor) → PAGE_INITIAL_BLOCKS (seed)
-      if (ep === "/pages.php") {
+      if (ep === "/pages") {
         const slugMatch = endpoint.match(/slug=([^&]+)/);
         const pageSlug = slugMatch ? decodeURIComponent(slugMatch[1]) : "home";
 
@@ -644,7 +713,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // Einzelnes Mitglied per ID
-      if (ep === "/admin/members.php" && endpoint.includes("id=")) {
+      if (ep === "/admin/members" && endpoint.includes("id=")) {
         notifyMockActive();
         const idMatch = endpoint.match(/id=(\w+)/);
         const found = mockMembers.find((m) => m.id === idMatch?.[1]);
@@ -657,27 +726,22 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       notifyMockActive();
       const parsed = body ? JSON.parse(body) : {};
 
-      // DELETE → einfach OK
-      if (method === "DELETE") {
-        return { success: true, message: "Gelöscht (Offline-Mock)" } as T;
-      }
-
-      // POST/PATCH → generische Erfolgsantwort mit den gesendeten Daten zurück
+      // POST/PATCH/DELETE → spezifische Handler zuerst, generischer DELETE am Ende
       const mockId = "mock-" + Date.now();
 
       // Page Visibility – PUT (save)
-      if (ep === "/admin/page-visibility.php") {
+      if (ep === "/admin/page-visibility") {
         try { localStorage.setItem("nac_page_visibility", body ?? "{}"); } catch {}
         return { success: true, message: "Sichtbarkeit gespeichert (Offline-Mock)" } as T;
       }
 
       // Pages / Sitebuilder – POST (saveBlocks)
-      if (ep === "/pages.php") {
+      if (ep === "/pages") {
         return { success: true, message: "Seite gespeichert (Offline-Mock)" } as T;
       }
 
       // Spezifische Antworten für bestimmte Endpunkte
-      if (ep === "/admin/finances.php") {
+      if (ep === "/admin/finances") {
         if (endpoint.includes("action=create")) {
           return { id: mockId, invoice_number: "RE-MOCK-" + Date.now().toString().slice(-4), success: true } as T;
         }
@@ -699,7 +763,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // ── Team Profile CRUD (mutable mock store) ──────────────────────────────
-      if (ep === "/team.php") {
+      if (ep === "/team") {
         const { TEAM_MEMBERS } = await import("../data/team");
         _initTeamProfiles(TEAM_MEMBERS);
         const idMatch = endpoint.match(/id=([^&]+)/);
@@ -722,12 +786,98 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         }
       }
 
+      // ── Karriere CRUD (mutabler localStorage-Store) ──────────────────────────
+      if (ep === "/karriere") {
+        const store = _getMockKarriereStore();
+
+        // Job speichern (anlegen oder updaten)
+        if (endpoint.includes("action=save_job")) {
+          const existing = store.jobs.find((j: any) => j.id === parsed.id);
+          if (existing) {
+            // Update
+            store.jobs = store.jobs.map((j: any) => j.id === parsed.id ? { ...j, ...parsed } : j);
+          } else {
+            // Neu anlegen
+            const newId = Math.max(0, ...store.jobs.map((j: any) => j.id || 0)) + 1;
+            store.jobs.push({ ...parsed, id: newId });
+          }
+          _setMockKarriereStore(store);
+          return { success: true, id: parsed.id || store.jobs[store.jobs.length - 1].id } as T;
+        }
+
+        // Job löschen
+        if (method === "DELETE" && endpoint.includes("job_id=")) {
+          const delId = parseInt(endpoint.match(/job_id=(\d+)/)?.[1] ?? "0");
+          if (delId) {
+            store.jobs = store.jobs.filter((j: any) => j.id !== delId);
+            _setMockKarriereStore(store);
+          }
+          return { success: true } as T;
+        }
+
+        // Benefit speichern
+        if (endpoint.includes("action=save_benefit")) {
+          const existingB = store.benefits.find((b: any) => b.id === parsed.id);
+          if (existingB) {
+            store.benefits = store.benefits.map((b: any) => b.id === parsed.id ? { ...b, ...parsed } : b);
+          } else {
+            const newBId = Math.max(0, ...store.benefits.map((b: any) => b.id || 0)) + 1;
+            store.benefits.push({ ...parsed, id: newBId });
+          }
+          _setMockKarriereStore(store);
+          return { success: true } as T;
+        }
+
+        // Benefit löschen
+        if (method === "DELETE" && endpoint.includes("benefit_id=")) {
+          const delBId = parseInt(endpoint.match(/benefit_id=(\d+)/)?.[1] ?? "0");
+          if (delBId) {
+            store.benefits = store.benefits.filter((b: any) => b.id !== delBId);
+            _setMockKarriereStore(store);
+          }
+          return { success: true } as T;
+        }
+
+        // Bewerber-Status updaten
+        if (method === "PATCH" && endpoint.includes("applicant_id=")) {
+          const appId = parseInt(endpoint.match(/applicant_id=(\d+)/)?.[1] ?? "0");
+          if (appId) {
+            store.applicants = store.applicants.map((a: any) => a.id === appId ? { ...a, ...parsed } : a);
+            _setMockKarriereStore(store);
+          }
+          return { success: true } as T;
+        }
+
+        // Bewerber löschen
+        if (method === "DELETE" && endpoint.includes("applicant_id=")) {
+          const delAppId = parseInt(endpoint.match(/applicant_id=(\d+)/)?.[1] ?? "0");
+          if (delAppId) {
+            store.applicants = store.applicants.filter((a: any) => a.id !== delAppId);
+            _setMockKarriereStore(store);
+          }
+          return { success: true } as T;
+        }
+
+        // Bewerbung einreichen
+        if (endpoint.includes("action=apply")) {
+          const newApp = {
+            id: Math.max(0, ...store.applicants.map((a: any) => a.id || 0)) + 1,
+            ...parsed,
+            status: "neu",
+            createdAt: new Date().toISOString(),
+          };
+          store.applicants.push(newApp);
+          _setMockKarriereStore(store);
+          return { success: true, id: newApp.id } as T;
+        }
+      }
+
       // Member SEPA write
-      if (ep === "/member/sepa.php" && endpoint.includes("action=update_iban")) {
+      if (ep === "/member/sepa" && endpoint.includes("action=update_iban")) {
         return { success: true, message: "IBAN aktualisiert" } as T;
       }
 
-      if (ep === "/admin/smtp.php") {
+      if (ep === "/admin/smtp") {
         if (endpoint.includes("action=save")) {
           return { success: true, message: "SMTP-Einstellungen gespeichert (Mock)." } as T;
         }
@@ -744,7 +894,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return { success: true } as T;
       }
 
-      if (ep === "/admin/integrations.php") {
+      if (ep === "/admin/integrations") {
         if (endpoint.includes("action=connection_test")) {
           return { success: false, message: "Offline-Modus – kein Verbindungstest möglich." } as T;
         }
@@ -754,7 +904,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return { success: true } as T;
       }
 
-      if (ep === "/login.php") {
+      if (ep === "/login") {
         // Im Mock-Modus: Credentials gegen bekannte Dev-Accounts prüfen.
         // Im Preview/Offline-Modus reicht Email-Match – Passwort wird nur vom echten PHP-Backend geprüft.
         if (body) {
@@ -786,12 +936,12 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return null;
       }
 
-      if (ep === "/admin/convert_lead.php") {
+      if (ep === "/admin/convert_lead") {
         return { success: true, member_id: mockId } as T;
       }
 
       // Staff-Onboarding: createStaff soll staff_number + id zurueckgeben
-      if (ep === "/admin/users.php" && endpoint.includes("action=create")) {
+      if (ep === "/admin/users" && endpoint.includes("action=create")) {
         const staffNum = "EMP-" + String(Math.floor(Math.random() * 900) + 100);
         // Persist in mock memory so listTeam returns the new employee
         const firstName = parsed.first_name ?? "";
@@ -826,7 +976,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // Staff Update with Profile: saves both users + team_profile atomically
-      if (ep === "/admin/users.php" && endpoint.includes("action=update_profile")) {
+      if (ep === "/admin/users" && endpoint.includes("action=update_profile")) {
         const { TEAM_MEMBERS: TM3 } = await import("../data/team");
         _initTeamProfiles(TM3);
         const upIdMatch = endpoint.match(/id=([^&]+)/);
@@ -852,7 +1002,7 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // Onboard-Endpunkte
-      if (ep === "/onboard.php") {
+      if (ep === "/onboard") {
         if (endpoint.includes("action=change_password")) {
           return { success: true, message: "Passwort erfolgreich geaendert." } as T;
         }
@@ -878,8 +1028,110 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // Coaching-Endpunkte
-      if (ep === "/admin/coaching.php" || ep === "/member/coaching.php") {
+      if (ep === "/admin/coaching" || ep === "/member/coaching") {
         return { success: true, id: mockId } as T;
+      }
+
+      // ── Reviews CRUD ──────────────────────────────────────────────────────
+      if (ep === "/reviews") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        if (endpoint.includes("action=sync")) {
+          return { success: true, message: "Google-Reviews synchronisiert (Mock).", imported: 0 } as T;
+        }
+        return { success: true } as T;
+      }
+
+      // ── Tarife CRUD ───────────────────────────────────────────────────────
+      if (ep === "/tarife") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Press CRUD ────────────────────────────────────────────────────────
+      if (ep === "/press") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Kurse CRUD ────────────────────────────────────────────────────────
+      if (ep === "/kurse") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Leads CRUD ────────────────────────────────────────────────────────
+      if (ep === "/leads") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true, ...parsed } as T;
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Admin Members CRUD ────────────────────────────────────────────────
+      if (ep === "/admin/members") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true, ...parsed } as T;
+        if (endpoint.includes("action=block") || endpoint.includes("action=unblock")) {
+          return { success: true } as T;
+        }
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Admin Bookings CRUD ───────────────────────────────────────────────
+      if (ep === "/admin/bookings") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true } as T;
+      }
+
+      // ── Öffentliche Buchungen ─────────────────────────────────────────────
+      if (ep === "/bookings") {
+        return { id: mockId, success: true } as T;
+      }
+
+      // ── Admin Settings ────────────────────────────────────────────────────
+      if (ep === "/admin/settings") {
+        return { success: true, message: "Einstellungen gespeichert." } as T;
+      }
+
+      // ── Pricing CRUD ──────────────────────────────────────────────────────
+      if (ep === "/pricing") {
+        return { success: true } as T;
+      }
+
+      // ── Abwesenheiten CRUD ────────────────────────────────────────────────
+      if (ep === "/absences") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true, id: mockId } as T;
+      }
+
+      // ── Karriere: Shift/Swap (nicht im ep===/karriere Block oben) ─────────
+      if (ep === "/karriere") {
+        if (method === "DELETE") return { success: true } as T;
+        if (method === "PATCH") return { success: true } as T;
+        return { success: true, id: mockId } as T;
+      }
+
+      // ── Member-Endpunkte ──────────────────────────────────────────────────
+      if (ep === "/member/profile") return { success: true, ...parsed } as T;
+      if (ep === "/member/checkin") return { success: true, message: "Check-in erfolgreich (Mock)." } as T;
+      if (ep === "/member/tracking") return { success: true } as T;
+      if (ep === "/member/sepa") return { success: true } as T;
+      if (ep === "/admin/tracking") return { success: true } as T;
+
+      // ── Admin Users (Status / Delete / allgemein) ─────────────────────────
+      if (ep === "/admin/users") {
+        if (method === "DELETE") return { success: true } as T;
+        return { success: true, id: mockId, ...parsed } as T;
+      }
+
+      // ── Generischer DELETE-Fallback (MUSS nach allen spezifischen Handlern stehen) ──
+      if (method === "DELETE") {
+        return { success: true, message: "Gelöscht (Offline-Mock)" } as T;
       }
 
       // Generische Antwort: Die gesendeten Daten + Mock-ID zurückgeben
@@ -1344,40 +1596,40 @@ const normalizeStaffUser = (u: any): StaffUser => ({
 export const api = {
   auth: {
     login: (creds: LoginCredentials): Promise<LoginResponse> =>
-      request("/login.php", { method: "POST", body: JSON.stringify(creds) }, true),
+      request("/login", { method: "POST", body: JSON.stringify(creds) }, true),
     changePassword: (newPassword: string) =>
-      request("/onboard.php?action=change_password", { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
+      request("/onboard?action=change_password", { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
   },
 
   // ── PUBLIC ENDPOINTS (kein Auth noetig) ─────────────────────────────────────
   public: {
     /** Oeffentliche Team-Mitglieder laden (nur visible=1) */
-    team: () => request<any[]>("/team.php", {}, true),
+    team: () => request<any[]>("/team", {}, true),
 
     /** Oeffentliche Tarife laden (nur active=1) */
-    tarife: () => request<any[]>("/tarife.php", {}, true),
+    tarife: () => request<any[]>("/tarife", {}, true),
 
     /** Modulare Pricing-Daten (Basis-Tarife + Add-ons) laden */
-    pricing: () => request<any>("/pricing.php", {}, true),
+    pricing: () => request<any>("/pricing", {}, true),
 
     /** Oeffentliche Kurse laden */
-    kurse: () => request<any[]>("/kurse.php", {}, true),
+    kurse: () => request<any[]>("/kurse", {}, true),
 
     /** Oeffentliche Presseberichte laden */
-    press: () => request<any[]>("/press.php", {}, true),
+    press: () => request<any[]>("/press", {}, true),
 
     /** Oeffentliche Google-Rezensionen laden (nur visible=1) */
-    reviews: () => request<any[]>("/reviews.php", {}, true),
+    reviews: () => request<any[]>("/reviews", {}, true),
 
     /** Oeffentliche Studio-/Firmendaten (Adresse, Kontakt, Bankverbindung) */
-    settings: () => request<Record<string, string>>("/public/settings.php", {}, true),
+    settings: () => request<Record<string, string>>("/public/settings", {}, true),
 
     /** Oeffentliche Karriere-Daten laden (Jobs + Benefits) */
-    karriere: () => request<any>("/karriere.php", {}, true),
+    karriere: () => request<any>("/karriere", {}, true),
 
     /** Bewerbung einreichen */
     submitApplication: (data: any) =>
-      request<any>("/karriere.php?action=apply", { method: "POST", body: JSON.stringify(data) }, true),
+      request<any>("/karriere?action=apply", { method: "POST", body: JSON.stringify(data) }, true),
 
     /** Oeffentliches Lead-Formular (Probetraining/Kontakt) – silent, keine Toasts */
     submitLead: async (data: Omit<Lead, "id" | "createdAt">) => {
@@ -1385,23 +1637,23 @@ export const api = {
         ...data,
         desired_date: data.desiredDate,
       };
-      return request<any>("/leads.php", { method: "POST", body: JSON.stringify(payload) }, true);
+      return request<any>("/leads", { method: "POST", body: JSON.stringify(payload) }, true);
     },
 
     /** Gast-Buchung – erstellt Buchung ohne Account */
     bookAsGuest: (data: { course_id: string; name: string; email: string; phone?: string }) =>
-      request<{ id: string; success: boolean }>("/bookings.php", { method: "POST", body: JSON.stringify({ ...data, booking_type: "guest" }) }, true),
+      request<{ id: string; success: boolean }>("/bookings", { method: "POST", body: JSON.stringify({ ...data, booking_type: "guest" }) }, true),
   },
 
   // ── ADMIN BEREICH ───────────────────────────────────────────────────────────
   admin: {
-    /** Aggregierte Dashboard-KPIs aus /dashboard.php */
+    /** Aggregierte Dashboard-KPIs aus /dashboard */
     dashboard: {
-      stats: () => request<DashboardStats>("/dashboard.php"),
+      stats: () => request<DashboardStats>("/dashboard"),
     },
     leads: {
       list: async () => {
-        const data = await request<any[]>("/leads.php");
+        const data = await request<any[]>("/leads");
         return data.map(normalizeLead);
       },
       create: async (data: Omit<Lead, "id" | "createdAt">) => {
@@ -1409,7 +1661,7 @@ export const api = {
           ...data,
           desired_date: data.desiredDate,
         };
-        const res = await request<any>("/leads.php", { method: "POST", body: JSON.stringify(payload) });
+        const res = await request<any>("/leads", { method: "POST", body: JSON.stringify(payload) });
         return normalizeLead(res);
       },
       update: async (id: string, data: Partial<Lead>) => {
@@ -1418,76 +1670,76 @@ export const api = {
           payload.desired_date = data.desiredDate;
           delete payload.desiredDate;
         }
-        const res = await request<any>(`/leads.php?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+        const res = await request<any>(`/leads?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });
         return normalizeLead(res);
       },
       updateStatus: (id: string, data: { status: LeadStatus }) =>
-        request(`/leads.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/leads?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       delete: (id: string) =>
-        request(`/leads.php?id=${id}`, { method: "DELETE" }),
+        request(`/leads?id=${id}`, { method: "DELETE" }),
       convertToMember: (leadId: string, contractData: Record<string, unknown>) =>
-        request("/admin/convert_lead.php", { method: "POST", body: JSON.stringify({ leadId, ...contractData }) }),
+        request("/admin/convert_lead", { method: "POST", body: JSON.stringify({ leadId, ...contractData }) }),
     },
 
     courses: {
-      list: () => request<Course[]>("/kurse.php"),
+      list: () => request<Course[]>("/kurse"),
       create: (data: Omit<Course, "id" | "enrolled">) =>
-        request("/kurse.php", { method: "POST", body: JSON.stringify(data) }),
+        request("/kurse", { method: "POST", body: JSON.stringify(data) }),
       update: (id: string, data: Partial<Course>) =>
-        request(`/kurse.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/kurse?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       delete: (id: string) =>
-        request(`/kurse.php?id=${id}`, { method: "DELETE" }),
+        request(`/kurse?id=${id}`, { method: "DELETE" }),
     },
 
     members: {
       list: async () => {
-        const data = await request<any[]>("/admin/members.php");
+        const data = await request<any[]>("/admin/members");
         return data.map(normalizeMember);
       },
       get: async (id: string) => {
-        const data = await request<any>(`/admin/members.php?id=${id}`);
+        const data = await request<any>(`/admin/members?id=${id}`);
         return normalizeMember(data);
       },
       create: (payload: any) =>
-        request("/admin/members.php?action=create", { method: "POST", body: JSON.stringify(payload) }),
+        request("/admin/members?action=create", { method: "POST", body: JSON.stringify(payload) }),
       update: async (id: string, payload: Partial<Member>) => {
-        const data = await request<any>(`/admin/members.php?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+        const data = await request<any>(`/admin/members?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });
         return normalizeMember(data);
       },
       block: (id: string, payload: { reason: string; message: string }) =>
-        request(`/admin/members.php?id=${id}&action=block`, { method: "POST", body: JSON.stringify(payload) }),
+        request(`/admin/members?id=${id}&action=block`, { method: "POST", body: JSON.stringify(payload) }),
       unblock: (id: string) =>
-        request(`/admin/members.php?id=${id}&action=unblock`, { method: "POST" }, true),
+        request(`/admin/members?id=${id}&action=unblock`, { method: "POST" }, true),
       deleteMember: (id: string) =>
-        request(`/admin/members.php?id=${id}`, { method: "DELETE" }, true),
+        request(`/admin/members?id=${id}`, { method: "DELETE" }, true),
     },
 
     finances: {
-      invoices: () => request<Invoice[]>("/admin/finances.php?type=invoices"),
+      invoices: () => request<Invoice[]>("/admin/finances?type=invoices"),
       create: (data: { member_id: string; amount: number; due_date: string }) =>
-        request<{ id: string; invoice_number: string }>("/admin/finances.php?action=create", { method: "POST", body: JSON.stringify(data) }),
+        request<{ id: string; invoice_number: string }>("/admin/finances?action=create", { method: "POST", body: JSON.stringify(data) }),
       markAsPaid: (id: string) =>
-        request(`/admin/finances.php?action=pay&id=${encodeURIComponent(id)}`, { method: "POST" }),
+        request(`/admin/finances?action=pay&id=${encodeURIComponent(id)}`, { method: "POST" }),
       storno: (id: string, reason: string) =>
-        request(`/admin/finances.php?action=storno&id=${encodeURIComponent(id)}`, { method: "POST", body: JSON.stringify({ reason }) }),
+        request(`/admin/finances?action=storno&id=${encodeURIComponent(id)}`, { method: "POST", body: JSON.stringify({ reason }) }),
       triggerDunningRun: () =>
-        request<{ success: boolean; affected: number }>("/admin/finances.php?action=dunning_run", { method: "POST" }),
+        request<{ success: boolean; affected: number }>("/admin/finances?action=dunning_run", { method: "POST" }),
       // ── SEPA-Mandate ──────────────────────────────────────────────────────
-      mandates: () => request<SepaMandate[]>("/admin/finances.php?type=mandates"),
+      mandates: () => request<SepaMandate[]>("/admin/finances?type=mandates"),
       createMandate: (data: { member_id: string; iban: string; bic?: string }) =>
-        request<{ id: number; mandate_reference: string }>("/admin/finances.php?action=create_mandate", { method: "POST", body: JSON.stringify(data) }),
+        request<{ id: number; mandate_reference: string }>("/admin/finances?action=create_mandate", { method: "POST", body: JSON.stringify(data) }),
       revokeMandate: (id: number) =>
-        request("/admin/finances.php?action=revoke_mandate", { method: "POST", body: JSON.stringify({ id }) }),
+        request("/admin/finances?action=revoke_mandate", { method: "POST", body: JSON.stringify({ id }) }),
       // ── Transaktionen ────────────────────────────────────────────────────
-      transactions: () => request<Transaction[]>("/admin/finances.php?type=transactions"),
+      transactions: () => request<Transaction[]>("/admin/finances?type=transactions"),
       retryTransaction: (id: number) =>
-        request("/admin/finances.php?action=retry_transaction", { method: "POST", body: JSON.stringify({ id }) }),
+        request("/admin/finances?action=retry_transaction", { method: "POST", body: JSON.stringify({ id }) }),
       // ── Inkasso ───────────────────────────────────────────────────────────
-      inkassoList: () => request<InkassoCase[]>("/admin/finances.php?type=inkasso"),
+      inkassoList: () => request<InkassoCase[]>("/admin/finances?type=inkasso"),
       escalateToInkasso: (invoiceId: string) =>
-        request("/admin/finances.php?action=escalate_inkasso", { method: "POST", body: JSON.stringify({ invoice_id: invoiceId }) }),
+        request("/admin/finances?action=escalate_inkasso", { method: "POST", body: JSON.stringify({ invoice_id: invoiceId }) }),
       updateInkasso: (id: string, data: { status: string; external_ref?: string; notes?: string }) =>
-        request(`/admin/finances.php?action=update_inkasso&id=${id}`, { method: "POST", body: JSON.stringify(data) }),
+        request(`/admin/finances?action=update_inkasso&id=${id}`, { method: "POST", body: JSON.stringify(data) }),
     },
 
     audit: {
@@ -1501,222 +1753,222 @@ export const api = {
           ? "?" + Object.entries(params).filter(([, v]) => v !== undefined && v !== "").map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&")
           : "";
         // Mock-Modus liefert AuditLog[] direkt → normalisieren
-        return request<AuditLog[] | { data: AuditLog[]; total: number }>(`/admin/audit_logs.php${qs}`)
+        return request<AuditLog[] | { data: AuditLog[]; total: number }>(`/admin/audit_logs${qs}`)
           .then(r => (Array.isArray(r) ? r : r.data));
       },
     },
 
     settings: {
-      get: () => request<Record<string, string>>("/admin/settings.php"),
+      get: () => request<Record<string, string>>("/admin/settings"),
       update: (payload: Record<string, string>) =>
-        request("/admin/settings.php", { method: "PATCH", body: JSON.stringify(payload) }),
+        request("/admin/settings", { method: "PATCH", body: JSON.stringify(payload) }),
     },
 
     requests: {
-      getAll: () => request<{ pauses: any[]; terminations: any[] }>("/admin/requests.php"),
+      getAll: () => request<{ pauses: any[]; terminations: any[] }>("/admin/requests"),
       updatePause: (id: string, status: "approved" | "rejected") =>
-        request(`/admin/requests.php?action=update_pause&id=${id}`, { method: "POST", body: JSON.stringify({ status }) }),
+        request(`/admin/requests?action=update_pause&id=${id}`, { method: "POST", body: JSON.stringify({ status }) }),
       updateTermination: (id: string, payload: { status: "processed"; effective_date?: string }) =>
-        request(`/admin/requests.php?action=update_termination&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
+        request(`/admin/requests?action=update_termination&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
       createManual: (payload: any) =>
-        request("/admin/requests.php?action=create_manual", { method: "POST", body: JSON.stringify(payload) }),
+        request("/admin/requests?action=create_manual", { method: "POST", body: JSON.stringify(payload) }),
     },
 
     tracking: {
-      getMemberData: (memberId: string) => request<any>(`/admin/tracking.php?member_id=${memberId}`),
+      getMemberData: (memberId: string) => request<any>(`/admin/tracking?member_id=${memberId}`),
       setGoals: (memberId: string, payload: any) =>
-        request(`/admin/tracking.php?action=set_goals&member_id=${memberId}`, { method: "POST", body: JSON.stringify(payload) }),
+        request(`/admin/tracking?action=set_goals&member_id=${memberId}`, { method: "POST", body: JSON.stringify(payload) }),
     },
 
     users: {
       listTeam: async () => {
-        const data = await request<any[]>("/admin/users.php");
+        const data = await request<any[]>("/admin/users");
         return data.map(normalizeStaffUser);
       },
       listStaff: async () => {
-        const data = await request<any[]>("/admin/users.php");
+        const data = await request<any[]>("/admin/users");
         const STAFF_ROLES: UserRole[] = ["admin", "hr", "finance", "trainer", "frontdesk"];
         return data
           .map(normalizeStaffUser)
           .filter((u) => STAFF_ROLES.includes(u.role) && u.active);
       },
       createStaff: (payload: any) =>
-        request("/admin/users.php?action=create", { method: "POST", body: JSON.stringify(payload) }),
+        request("/admin/users?action=create", { method: "POST", body: JSON.stringify(payload) }),
       updateStaff: (id: string, payload: any) =>
-        request(`/admin/users.php?action=update&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
+        request(`/admin/users?action=update&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
       updateStatus: (id: string, active: boolean) =>
-        request(`/admin/users.php?action=status&id=${id}`, { method: "POST", body: JSON.stringify({ active }) }),
+        request(`/admin/users?action=status&id=${id}`, { method: "POST", body: JSON.stringify({ active }) }),
       deleteStaff: (id: string) =>
-        request(`/admin/users.php?id=${id}`, { method: "DELETE" }, true),
+        request(`/admin/users?id=${id}`, { method: "DELETE" }, true),
       /** Load user + linked team_profile + syncStatus */
       detail: (id: string) =>
         request<{ user: any; teamProfile: any; legacyTeamMember: any; syncStatus: { profile_exists: boolean; legacy_exists: boolean; mismatches: string[] } }>(
-          `/admin/users.php?action=detail&id=${id}`
+          `/admin/users?action=detail&id=${id}`
         ),
       /** Save both user account + team_profile in one logical transaction */
       updateWithProfile: (id: string, payload: { user: any; teamProfile: any }) =>
-        request(`/admin/users.php?action=update_profile&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
+        request(`/admin/users?action=update_profile&id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
     },
 
     // ── TARIFE (Membership Plans) Admin CRUD ──────────────────────────────────
     tarife: {
-      list: () => request<any[]>("/tarife.php?all=1"),
+      list: () => request<any[]>("/tarife?all=1"),
       create: (data: any) =>
-        request("/tarife.php", { method: "POST", body: JSON.stringify(data) }),
+        request("/tarife", { method: "POST", body: JSON.stringify(data) }),
       update: (id: string, data: any) =>
-        request(`/tarife.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/tarife?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       delete: (id: string) =>
-        request(`/tarife.php?id=${id}`, { method: "DELETE" }),
+        request(`/tarife?id=${id}`, { method: "DELETE" }),
     },
 
     // ── PRICING (Modular: BasePlans + AddOns) Admin CRUD ─────────────────────
     pricing: {
-      get: () => request<any>("/pricing.php"),
+      get: () => request<any>("/pricing"),
       savePlans: (data: any) =>
-        request("/pricing.php?action=save_plans", { method: "POST", body: JSON.stringify(data) }),
+        request("/pricing?action=save_plans", { method: "POST", body: JSON.stringify(data) }),
       saveAddOns: (data: any) =>
-        request("/pricing.php?action=save_addons", { method: "POST", body: JSON.stringify(data) }),
+        request("/pricing?action=save_addons", { method: "POST", body: JSON.stringify(data) }),
       saveNotes: (data: any) =>
-        request("/pricing.php?action=save_notes", { method: "POST", body: JSON.stringify(data) }),
+        request("/pricing?action=save_notes", { method: "POST", body: JSON.stringify(data) }),
     },
 
     // ── TEAM (Public Team Members) Admin CRUD ─────────────────────────────────
     teamPublic: {
-      list: () => request<any[]>("/team.php?all=1"),
+      list: () => request<any[]>("/team?all=1"),
       create: (data: any) =>
-        request("/team.php", { method: "POST", body: JSON.stringify(data) }),
+        request("/team", { method: "POST", body: JSON.stringify(data) }),
       update: (id: string, data: any) =>
-        request(`/team.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/team?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       delete: (id: string) =>
-        request(`/team.php?id=${id}`, { method: "DELETE" }),
+        request(`/team?id=${id}`, { method: "DELETE" }),
     },
 
     // ── PRESS (Presseberichte) Admin CRUD ──────────────────────────────────────
     press: {
-      list: () => request<any[]>("/press.php"),
+      list: () => request<any[]>("/press"),
       create: (data: any) =>
-        request("/press.php", { method: "POST", body: JSON.stringify(data) }),
+        request("/press", { method: "POST", body: JSON.stringify(data) }),
       update: (id: string, data: any) =>
-        request(`/press.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/press?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       delete: (id: string) =>
-        request(`/press.php?id=${id}`, { method: "DELETE" }),
+        request(`/press?id=${id}`, { method: "DELETE" }),
     },
 
     // ── BOOKINGS (Kursbuchungen) Admin CRUD ───────────────────────────────────
     bookings: {
-      list: () => request<Booking[]>("/admin/bookings.php"),
+      list: () => request<Booking[]>("/admin/bookings"),
       updateStatus: (id: string, status: BookingStatus) =>
-        request(`/admin/bookings.php?id=${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+        request(`/admin/bookings?id=${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
       delete: (id: string) =>
-        request(`/admin/bookings.php?id=${id}`, { method: "DELETE" }),
+        request(`/admin/bookings?id=${id}`, { method: "DELETE" }),
     },
 
     // ── REVIEWS (Google-Rezensionen) Admin CRUD ──────────────────────────────
     reviews: {
       /** Alle Reviews + Stats laden */
-      getAll: () => request<{ reviews: any[]; stats: any }>("/reviews.php?all=1"),
+      getAll: () => request<{ reviews: any[]; stats: any }>("/reviews?all=1"),
       /** Google-Sync starten */
       sync: () => request<{ success: boolean; message: string; imported: number }>(
-        "/reviews.php?action=sync", { method: "POST" }
+        "/reviews?action=sync", { method: "POST" }
       ),
       /** Sichtbarkeit togglen */
       toggleVisibility: (id: string, visible: boolean) =>
-        request(`/reviews.php?id=${id}`, {
+        request(`/reviews?id=${id}`, {
           method: "PATCH",
           body: JSON.stringify({ visible }),
         }),
       /** Review entfernen */
       delete: (id: string) =>
-        request(`/reviews.php?id=${id}`, { method: "DELETE" }),
+        request(`/reviews?id=${id}`, { method: "DELETE" }),
     },
 
     // ── KARRIERE / HR ─────────────���────────────────────────────────────────────
     karriere: {
       /** Alle Jobs + Benefits + Bewerber laden (Admin) */
-      getAll: () => request<any>("/karriere.php?admin=1"),
+      getAll: () => request<any>("/karriere?admin=1"),
       /** Job anlegen/updaten */
       saveJob: (data: any) =>
-        request("/karriere.php?action=save_job", { method: "POST", body: JSON.stringify(data) }),
+        request("/karriere?action=save_job", { method: "POST", body: JSON.stringify(data) }),
       /** Job loeschen */
       deleteJob: (id: number) =>
-        request(`/karriere.php?job_id=${id}`, { method: "DELETE" }),
+        request(`/karriere?job_id=${id}`, { method: "DELETE" }),
       /** Benefit anlegen/updaten */
       saveBenefit: (data: any) =>
-        request("/karriere.php?action=save_benefit", { method: "POST", body: JSON.stringify(data) }),
+        request("/karriere?action=save_benefit", { method: "POST", body: JSON.stringify(data) }),
       /** Benefit loeschen */
       deleteBenefit: (id: number) =>
-        request(`/karriere.php?benefit_id=${id}`, { method: "DELETE" }),
+        request(`/karriere?benefit_id=${id}`, { method: "DELETE" }),
       /** Bewerber-Status updaten */
       updateApplicant: (id: number, data: any) =>
-        request(`/karriere.php?applicant_id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/karriere?applicant_id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       /** Bewerber loeschen */
       deleteApplicant: (id: number) =>
-        request(`/karriere.php?applicant_id=${id}`, { method: "DELETE" }),
+        request(`/karriere?applicant_id=${id}`, { method: "DELETE" }),
     },
 
     // ── EINSATZPLANUNG / SHIFTS ──────────────────────────────────────────────
     shifts: {
       /** Schichten einer Woche laden */
       getWeek: (weekStart: string) =>
-        request<any[]>(`/karriere.php?action=shifts&week=${weekStart}`),
+        request<any[]>(`/karriere?action=shifts&week=${weekStart}`),
       /** Schicht anlegen/updaten */
       save: (data: any) =>
-        request("/karriere.php?action=save_shift", { method: "POST", body: JSON.stringify(data) }),
+        request("/karriere?action=save_shift", { method: "POST", body: JSON.stringify(data) }),
       /** Schicht loeschen */
       delete: (id: number) =>
-        request(`/karriere.php?shift_id=${id}`, { method: "DELETE" }),
+        request(`/karriere?shift_id=${id}`, { method: "DELETE" }),
       /** Tauschanfrage */
       requestSwap: (data: any) =>
-        request("/karriere.php?action=swap_request", { method: "POST", body: JSON.stringify(data) }),
+        request("/karriere?action=swap_request", { method: "POST", body: JSON.stringify(data) }),
       /** Tauschanfrage genehmigen/ablehnen */
       reviewSwap: (id: number, data: any) =>
-        request(`/karriere.php?swap_id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/karriere?swap_id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       /** Schicht als Tausch anbieten */
       offerSwap: (shiftId: number, reason: string) =>
-        request("/karriere.php?action=offer_swap", { method: "POST", body: JSON.stringify({ shiftId, reason }) }),
+        request("/karriere?action=offer_swap", { method: "POST", body: JSON.stringify({ shiftId, reason }) }),
       /** Tausch-Angebot annehmen */
       acceptSwap: (offerId: number, acceptorId: string, acceptorName: string) =>
-        request("/karriere.php?action=accept_swap", { method: "POST", body: JSON.stringify({ offerId, acceptorId, acceptorName }) }),
+        request("/karriere?action=accept_swap", { method: "POST", body: JSON.stringify({ offerId, acceptorId, acceptorName }) }),
     },
 
     // ── ABWESENHEITEN / ABSENCES ────────────────────────────────────────────
     absences: {
       /** Alle Abwesenheiten laden */
-      list: () => request<any[]>("/absences.php"),
+      list: () => request<any[]>("/absences"),
       /** Abwesenheit beantragen */
       request: (data: any) =>
-        request("/absences.php?action=request", { method: "POST", body: JSON.stringify(data) }),
+        request("/absences?action=request", { method: "POST", body: JSON.stringify(data) }),
       /** Genehmigen / Ablehnen */
       review: (id: number, data: { status: string; approvedBy: string }) =>
-        request(`/absences.php?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+        request(`/absences?id=${id}`, { method: "PATCH", body: JSON.stringify(data) }),
       /** Loeschen */
       delete: (id: number) =>
-        request(`/absences.php?id=${id}`, { method: "DELETE" }),
+        request(`/absences?id=${id}`, { method: "DELETE" }),
       /** Urlaubsbudgets laden */
-      budgets: () => request<any[]>("/absences.php?action=budgets"),
+      budgets: () => request<any[]>("/absences?action=budgets"),
       /** Offene Tausch-Angebote laden */
-      swapOffers: () => request<any[]>("/absences.php?action=swap_offers"),
+      swapOffers: () => request<any[]>("/absences?action=swap_offers"),
     },
 
     // ── COACHING PIPELINE ──────────────────────────────────────────────────
     coaching: {
       /** Alle Coaching-Requests laden (Admin) */
-      list: () => request<any[]>("/admin/coaching.php"),
+      list: () => request<any[]>("/admin/coaching"),
       /** Trainer zuweisen */
       assign: (requestId: string, staffId: string) =>
-        request(`/admin/coaching.php?action=assign&id=${requestId}`, {
+        request(`/admin/coaching?action=assign&id=${requestId}`, {
           method: "POST",
           body: JSON.stringify({ staff_id: staffId }),
         }),
       /** Plan speichern & an Mitglied senden */
       savePlan: (requestId: string, plan: any) =>
-        request(`/admin/coaching.php?action=save_plan&id=${requestId}`, {
+        request(`/admin/coaching?action=save_plan&id=${requestId}`, {
           method: "POST",
           body: JSON.stringify(plan),
         }),
       /** Status ändern (completed, cancelled) */
       updateStatus: (requestId: string, status: string) =>
-        request(`/admin/coaching.php?action=update_status&id=${requestId}`, {
+        request(`/admin/coaching?action=update_status&id=${requestId}`, {
           method: "POST",
           body: JSON.stringify({ status }),
         }),
@@ -1726,17 +1978,17 @@ export const api = {
   // ── INTEGRATIONS ────────────────────────────────────────────────────────────
   integrations: {
     getSettings: () =>
-      request<any>("/admin/integrations.php?action=settings"),
+      request<any>("/admin/integrations?action=settings"),
     saveSettings: (payload: any) =>
       request(
-        "/admin/integrations.php?action=settings",
+        "/admin/integrations?action=settings",
         { method: "POST", body: JSON.stringify(payload) },
         true
       ),
     /** Verbindungstest gegen Magicline (x-api-key HEAD /customers) */
     connectionTest: () =>
       request<{ success: boolean; message: string; environment?: string; studio?: string }>(
-        "/admin/integrations.php?action=connection_test",
+        "/admin/integrations?action=connection_test",
         {},
         true
       ),
@@ -1753,7 +2005,7 @@ export const api = {
           total_by_status: Record<string, number>;
         };
       }>(
-        "/admin/integrations.php?action=sync_preview",
+        "/admin/integrations?action=sync_preview",
         { method: "POST", body: JSON.stringify(payload) },
         true
       ),
@@ -1774,7 +2026,7 @@ export const api = {
           errors?: number;
         };
       }>(
-        "/admin/integrations.php?action=sync_run",
+        "/admin/integrations?action=sync_run",
         { method: "POST", body: JSON.stringify(payload) },
         true
       ),
@@ -1790,7 +2042,7 @@ export const api = {
           sent_to_merge_queue: number;
           errors: number;
         };
-      }>("/admin/integrations.php?action=sync_members", { method: "POST" }, true),
+      }>("/admin/integrations?action=sync_members", { method: "POST" }, true),
     getMergeCandidates: () =>
       request<{
         candidates: Array<{
@@ -1802,30 +2054,30 @@ export const api = {
           nac?: { first_name: string; last_name: string; email: string; member_since?: string; status?: string };
           ml?: { first_name: string; last_name: string; email: string; customer_status?: string };
         }>;
-      }>("/admin/integrations.php?action=merge_candidates", {}, true),
+      }>("/admin/integrations?action=merge_candidates", {}, true),
     /** Link / Create aus der Merge-Queue */
     mergeApply: (payload: { candidate_id: number; action: "link" | "create"; member_id?: string }) =>
       request<{ success: boolean; message: string }>(
-        "/admin/integrations.php?action=merge_apply",
+        "/admin/integrations?action=merge_apply",
         { method: "POST", body: JSON.stringify(payload) },
         true
       ),
     /** Kandidaten aus der Merge-Queue ignorieren */
     mergeIgnore: (candidateId: number) =>
       request<{ success: boolean; message: string }>(
-        "/admin/integrations.php?action=merge_ignore",
+        "/admin/integrations?action=merge_ignore",
         { method: "POST", body: JSON.stringify({ candidate_id: candidateId }) },
         true
       ),
     resolveMerge: (id: number, resolution: "link" | "ignore") =>
       request<{ success: boolean; message: string }>(
-        `/admin/integrations.php?action=resolve_merge&id=${id}&resolution=${resolution}`,
+        `/admin/integrations?action=resolve_merge&id=${id}&resolution=${resolution}`,
         { method: "POST" },
         true
       ),
     getDebugLog: () =>
       request<{ lines: string[]; total: number; showing: number; log_path: string }>(
-        "/admin/integrations.php?action=debug_log",
+        "/admin/integrations?action=debug_log",
         {},
         true
       ),
@@ -1835,7 +2087,7 @@ export const api = {
         message: string;
         diagnosis: Record<string, unknown>;
       }>(
-        "/admin/integrations.php?action=test_log",
+        "/admin/integrations?action=test_log",
         {},
         true
       ),
@@ -1844,19 +2096,19 @@ export const api = {
   // ── SMTP ────────────────────────────────────────────────────────────────────
   smtp: {
     getSettings: () =>
-      request<any>("/admin/smtp.php"),
+      request<any>("/admin/smtp"),
     save: (payload: any) =>
-      request<{ message: string }>("/admin/smtp.php?action=save", {
+      request<{ message: string }>("/admin/smtp?action=save", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
     test: (payload: any) =>
-      request<{ success: boolean; message: string; log?: string }>("/admin/smtp.php?action=test", {
+      request<{ success: boolean; message: string; log?: string }>("/admin/smtp?action=test", {
         method: "POST",
         body: JSON.stringify(payload),
       }),
     sendTest: (toEmail: string) =>
-      request<{ success: boolean; message: string }>("/admin/smtp.php?action=send_test", {
+      request<{ success: boolean; message: string }>("/admin/smtp?action=send_test", {
         method: "POST",
         body: JSON.stringify({ to_email: toEmail }),
       }),
@@ -1866,22 +2118,22 @@ export const api = {
   member: {
     profile: {
       get: async () => {
-        const data = await request<any>("/member/profile.php");
+        const data = await request<any>("/member/profile");
         return normalizeMember(data);
       },
       update: (payload: any) =>
-        request("/member/profile.php", { method: "PATCH", body: JSON.stringify(payload) }),
+        request("/member/profile", { method: "PATCH", body: JSON.stringify(payload) }),
     },
-    stats: () => request<MemberStats>("/member/stats.php"),
+    stats: () => request<MemberStats>("/member/stats"),
     changePassword: (newPassword: string) =>
-      request("/member/profile.php", { method: "PATCH", body: JSON.stringify({ password: newPassword }) }),
+      request("/member/profile", { method: "PATCH", body: JSON.stringify({ password: newPassword }) }),
 
     // NEU: Self-Service & Uploads
     uploadDocument: async (file: File) => {
       const formData = new FormData();
       formData.append("document", file);
       const token = tokenStore.get();
-      const res = await fetch(`${BASE_URL}/member/upload.php`, {
+      const res = await fetch(`${BASE_URL}/member/upload`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
@@ -1893,7 +2145,7 @@ export const api = {
     contracts: {
       getData: () =>
         request<{ invoices: Invoice[]; pauses: any[] }>(
-          "/member/contracts.php",
+          "/member/contracts",
           {},
           true  // silent – PHP hat denselben member_id-JWT-Bug wie tracking.php;
                 // MemberVertrag.tsx fängt den Fehler mit Mock-Daten ab
@@ -1901,7 +2153,7 @@ export const api = {
       upgrade: (plan: string) => {
         const memberId = getCurrentUserId();
         return request(
-          "/member/contracts.php?action=upgrade" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
+          "/member/contracts?action=upgrade" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
           { method: "POST", body: JSON.stringify({ plan, member_id: memberId }) },
           true  // silent – PHP liest member_id nicht aus Request; Fehler wird im Component behandelt
         );
@@ -1909,7 +2161,7 @@ export const api = {
       requestPause: (payload: any) => {
         const memberId = getCurrentUserId();
         return request(
-          "/member/contracts.php?action=pause" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
+          "/member/contracts?action=pause" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
           { method: "POST", body: JSON.stringify({ ...payload, member_id: memberId }) },
           true  // silent
         );
@@ -1917,17 +2169,17 @@ export const api = {
       terminate: (payload: any) => {
         const memberId = getCurrentUserId();
         return request(
-          "/member/contracts.php?action=terminate" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
+          "/member/contracts?action=terminate" + (memberId ? `&member_id=${encodeURIComponent(memberId)}` : ""),
           { method: "POST", body: JSON.stringify({ ...payload, member_id: memberId }) },
           true  // silent
         );
       },
       // ── SEPA / IBAN Self-Service ────────────────────────────────────────
       getSepaStatus: () =>
-        request<{ iban_masked: string; mandate_reference: string; status: string; signed_at: string; next_collection_date?: string; cancellation_limit_hours?: number }>("/member/sepa.php", {}, true),
+        request<{ iban_masked: string; mandate_reference: string; status: string; signed_at: string; next_collection_date?: string; cancellation_limit_hours?: number }>("/member/sepa", {}, true),
       updateIban: (iban: string) => {
         const memberId = getCurrentUserId();
-        return request("/member/sepa.php?action=update_iban", {
+        return request("/member/sepa?action=update_iban", {
           method: "POST",
           body: JSON.stringify({ iban, member_id: memberId }),
         });
@@ -1942,7 +2194,7 @@ export const api = {
       getData: () => {
         const memberId = getCurrentUserId();
         return request<{ measurements: any[]; goals: any; logs: any[] }>(
-          "/member/tracking.php",
+          "/member/tracking",
           {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1957,7 +2209,7 @@ export const api = {
       addMeasurement: (payload: any) => {
         const memberId = getCurrentUserId();
         return request(
-          "/member/tracking.php",
+          "/member/tracking",
           {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -1978,7 +2230,7 @@ export const api = {
       logNutrition: (payload: any) => {
         const memberId = getCurrentUserId();
         return request(
-          "/member/tracking.php",
+          "/member/tracking",
           {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -2001,29 +2253,29 @@ export const api = {
     // ── COACHING (Member) ──────────────────────────────────────────────────
     coaching: {
       /** Meine Coaching-Requests laden */
-      list: () => request<any[]>("/member/coaching.php", {}, true),
+      list: () => request<any[]>("/member/coaching", {}, true),
       /** Neue Coaching-Anfrage stellen */
       request: (data: { type: string; goal: string; notes?: string }) =>
-        request("/member/coaching.php?action=request", {
+        request("/member/coaching?action=request", {
           method: "POST",
           body: JSON.stringify({ ...data, member_id: getCurrentUserId() }),
         }),
       /** Checklist-Item togglen */
       toggleItem: (requestId: string, itemIndex: number) =>
-        request(`/member/coaching.php?action=toggle_item&id=${requestId}`, {
+        request(`/member/coaching?action=toggle_item&id=${requestId}`, {
           method: "POST",
           body: JSON.stringify({ item_index: itemIndex, member_id: getCurrentUserId() }),
         }),
     },
 
     sessions: {
-      upcoming: () => request<any[]>("/member/sessions.php", {}, true),
-      myBookings: () => request<any[]>("/member/bookings.php", {}, true),
-      book:   (id: string) => request("/member/book.php", { method: "POST", body: JSON.stringify({ id, member_id: getCurrentUserId() }) }),
+      upcoming: () => request<any[]>("/member/sessions", {}, true),
+      myBookings: () => request<any[]>("/member/bookings", {}, true),
+      book:   (id: string) => request("/member/book", { method: "POST", body: JSON.stringify({ id, member_id: getCurrentUserId() }) }),
       cancel: (id: string) => {
         const memberId = getCurrentUserId();
         const qs = memberId ? `&member_id=${encodeURIComponent(memberId)}` : "";
-        return request(`/member/bookings.php?id=${encodeURIComponent(id)}${qs}`, {
+        return request(`/member/bookings?id=${encodeURIComponent(id)}${qs}`, {
           method: "DELETE",
           body: JSON.stringify({ id, member_id: memberId }),
         });
@@ -2040,7 +2292,7 @@ export const api = {
      */
     getBlocks: (slug: string) =>
       request<{ blocks: SerializedBlock[]; published: boolean }>(
-        `/pages.php?slug=${encodeURIComponent(slug)}`,
+        `/pages?slug=${encodeURIComponent(slug)}`,
         {},
         true   // silent – Fallback in PageEditor selbst implementiert
       ),
@@ -2052,7 +2304,7 @@ export const api = {
      */
     saveBlocks: (slug: string, payload: { blocks: SerializedBlock[]; published: boolean }) =>
       request<{ success: boolean; message?: string }>(
-        "/pages.php",
+        "/pages",
         { method: "PUT", body: JSON.stringify({ slug, ...payload }) }
       ),
   },
@@ -2068,21 +2320,21 @@ export const api = {
       request<{
         visibility: Record<string, boolean>;
         navOverrides: Record<string, { navHref: string; customHref: string; customLabel?: string }>;
-      }>("/admin/page-visibility.php", {}, true),
+      }>("/admin/page-visibility", {}, true),
 
     /**
      * Öffentlicher Endpoint (kein Auth) – für Navbar/Footer-Filterung.
-     * GET /public/page-visibility.php
+     * GET /public/page-visibility
      */
     getPublic: () =>
       request<{
         visibility: Record<string, boolean>;
         navOverrides: Record<string, { navHref: string; customHref: string; customLabel?: string }>;
-      }>("/public/page-visibility.php"),
+      }>("/public/page-visibility"),
 
     /**
      * Speichert den Sichtbarkeitsstatus aller Seiten.
-     * PUT /admin/page-visibility.php
+     * PUT /admin/page-visibility
      * Body: { visibility, navOverrides }
      */
     save: (payload: {

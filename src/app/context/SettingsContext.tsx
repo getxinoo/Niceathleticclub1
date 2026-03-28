@@ -36,7 +36,7 @@ export const SETTINGS_DEFAULTS: Record<string, string> = {
   phone:          "+49 (0) 7161 / 9163663",
   email:          "info@nice-fitness.de",
   website:        "https://www.nice-fitness.de",
-  vat_id:         "DE123456789",
+  vat_id:         "DE320247039",
   bank_iban:      "DE89 3704 0044 0532 0130 00",
   bank_bic:       "COBADEFFXXX",
   bank_name:      "Commerzbank AG",

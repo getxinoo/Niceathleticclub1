@@ -290,9 +290,9 @@ export default function Kontakt() {
   return (
     <>
       <PageMeta
-        title="Kontakt"
-        description="Schreib uns oder ruf an – Nice Athletic Club Göppingen. Kontaktformular, Öffnungszeiten und Adresse."
-        canonical="https://niceathleticclub.de/kontakt"
+        title="Kontakt – Nice Athletic Club Göppingen | Robert-Bosch-Str. 5"
+        description="Kontakt zum Nice Athletic Club Göppingen: Tel. 071619163663, Robert-Bosch-Straße 5, 73037 Göppingen. Mo–Fr 06–23 Uhr, Sa–So 08–21 Uhr. Schreib uns direkt!"
+        canonical="https://nicefitness.de/kontakt"
       />
 
       <motion.div

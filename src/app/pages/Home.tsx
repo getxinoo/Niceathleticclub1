@@ -27,6 +27,7 @@ import {
   type PageBlock,
   type HeroBlockData,
 } from "../../data/blocks";
+import { buildBreadcrumbSchema, buildServiceSchema, SITE_URL } from "../../lib/schema";
 
 // ── Pillar background images (Figma assets) ────────────────────────────────────
 import pillarStrengthImg from "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png";
@@ -1368,9 +1369,25 @@ export default function Home() {
   return (
     <>
       <PageMeta
-        title="Premium Fitness in Göppingen"
-        description="Nice Athletic Club – Premium Fitness in Göppingen. Strength, HIIT, Combat, Recovery & Personal Training. Jetzt kostenloses Probetraining buchen."
-        canonical="https://niceathleticclub.de"
+        title="Premium Fitnessstudio Göppingen – CrossFit, HYROX & Athletic Training"
+        description="Nice Athletic Club Göppingen: Dein Premium-Gym mit CrossFit-Box, HYROX-Zone, Athletic Area & Personal Training. Industriehallen-Flair, Top-Coaches, starke Community. Jetzt kostenloses Probetraining sichern!"
+        canonical={`${SITE_URL}/`}
+        ogImage={`${SITE_URL}/images/studio/entrance.png`}
+        schemas={[
+          buildBreadcrumbSchema([]),
+          buildServiceSchema({
+            name: 'CrossFit Göppingen',
+            description: 'Certified CrossFit-Affiliate in Göppingen mit täglichen WODs, Olympischem Gewichtheben und starker Community.',
+            url: `${SITE_URL}/crossfit-gp`,
+            image: `${SITE_URL}/images/crossfit/hero.png`,
+          }),
+          buildServiceSchema({
+            name: 'HYROX Training Göppingen',
+            description: 'Alle 8 HYROX-Stationen: SkiErg, Sled Push, Rowing, Wall Balls & mehr. Perfekte Wettkampfvorbereitung im Nice Athletic Club.',
+            url: `${SITE_URL}/hyrox`,
+            image: `${SITE_URL}/images/hyrox/hero.png`,
+          }),
+        ]}
       />
       <main>
         {/* Hero – driven by CMS blocks */}

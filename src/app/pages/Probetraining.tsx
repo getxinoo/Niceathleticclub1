@@ -370,9 +370,9 @@ export default function Probetraining() {
   return (
     <>
       <PageMeta
-        title="Kostenloses Probetraining"
-        description="Starte jetzt mit deinem kostenlosen Probetraining im Nice Athletic Club Hamburg. Kein Vertrag, kein Risiko – nur dein erster Schritt."
-        canonical="https://niceathleticclub.de/probetraining"
+        title="Kostenloses Probetraining Göppingen – Jetzt anmelden | Nice Athletic Club"
+        description="Gratis Probetraining im Nice Athletic Club Göppingen! Kein Vertrag, kein Risiko – lerne unser Studio, unsere Coaches & die Community kennen. Termin einfach online buchen."
+        canonical="https://nicefitness.de/probetraining"
       />
 
       <div

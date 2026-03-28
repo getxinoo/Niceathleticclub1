@@ -441,12 +441,6 @@ export default function AdminTarife() {
                       </p>
                     )}
 
-                    {plan.blaulichtDiscount && (
-                      <p className="text-xs mb-2" style={{ color: "rgba(59,130,246,0.6)" }}>
-                        Blaulicht: {plan.price - plan.blaulichtDiscount} €
-                      </p>
-                    )}
-
                     {plan.studentPrice && (
                       <p className="text-xs mb-2" style={{ color: "rgba(52,211,153,0.7)" }}>
                         Schüler/Student: {plan.studentPrice} €
@@ -551,15 +545,6 @@ export default function AdminTarife() {
                   style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", color: "#fff", fontFamily: "var(--font-body)", fontSize: "14px", outline: "none", boxSizing: "border-box", resize: "vertical" }}
                 />
               </div>
-              <div>
-                <FieldLabel>Blaulicht-Hinweis</FieldLabel>
-                <textarea
-                  value={blaulichtNote}
-                  onChange={(e) => setBlaulichtNote(e.target.value)}
-                  rows={3}
-                  style={{ width: "100%", padding: "10px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "4px", color: "#fff", fontFamily: "var(--font-body)", fontSize: "14px", outline: "none", boxSizing: "border-box", resize: "vertical" }}
-                />
-              </div>
               <button
                 onClick={handleSaveNotes}
                 disabled={saving}
@@ -596,8 +581,8 @@ export default function AdminTarife() {
                 <FieldInput type="number" value={planForm.price} onChange={(v) => setPlanForm({ ...planForm, price: v })} placeholder="69" />
               </div>
               <div>
-                <FieldLabel>Blaulicht-Rabatt (€)</FieldLabel>
-                <FieldInput type="number" value={planForm.blaulichtDiscount} onChange={(v) => setPlanForm({ ...planForm, blaulichtDiscount: v })} placeholder="10" />
+                <FieldLabel>Sortierung</FieldLabel>
+                <FieldInput type="number" value={planForm.sortOrder} onChange={(v) => setPlanForm({ ...planForm, sortOrder: v })} placeholder="0" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -605,12 +590,6 @@ export default function AdminTarife() {
                 <FieldLabel>Schüler/Student-Preis (€)</FieldLabel>
                 <FieldInput type="number" value={planForm.studentPrice} onChange={(v) => setPlanForm({ ...planForm, studentPrice: v })} placeholder="49" />
               </div>
-              <div>
-                <FieldLabel>Sortierung</FieldLabel>
-                <FieldInput type="number" value={planForm.sortOrder} onChange={(v) => setPlanForm({ ...planForm, sortOrder: v })} placeholder="0" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
                 <FieldLabel>Periode</FieldLabel>
                 <FieldInput value={planForm.period} onChange={(v) => setPlanForm({ ...planForm, period: v })} placeholder="pro Monat" />

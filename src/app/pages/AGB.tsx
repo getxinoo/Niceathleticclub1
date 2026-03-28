@@ -41,7 +41,8 @@ export default function AGB() {
       <PageMeta
         title="AGB"
         description="Allgemeine Geschäftsbedingungen der MK Fitness & Strength GmbH – Nice Athletic Club, Göppingen. Tarife, Laufzeiten, Hausordnung und mehr."
-        canonical="https://niceathleticclub.de/agb"
+        canonical="https://nicefitness.de/agb"
+        robots="noindex"
       />
 
       <motion.div

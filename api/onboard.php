@@ -128,7 +128,7 @@ function validate_password(string $pw, string $firstName = '', string $lastName 
 
     $pwLower = strtolower($pw);
     foreach ($forbidden as $f) {
-        if ($f && strlen($f) >= 3 && str_contains($pwLower, $f)) {
+        if ($f && strlen($f) >= 3 && strpos($pwLower, $f) !== false) {
             $errors[] = 'Passwort darf keine Namensbestandteile oder Geburtsdaten enthalten.';
             break;
         }

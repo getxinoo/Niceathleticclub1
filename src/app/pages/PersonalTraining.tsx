@@ -165,9 +165,9 @@ export default function PersonalTraining() {
   return (
     <>
       <PageMeta
-        title="Personal Training – Nice Athletic Club"
-        description="Premium Fitness in Göppingen – Individuelles 1:1 Personal Training mit zertifizierten Trainern, maßgeschneiderten Plänen und messbaren Resultaten im Nice Athletic Club."
-        canonical="https://niceathleticclub.de/personal-training"
+        title="Personal Training Göppingen – 1:1 Coaching mit Top-Trainern | NAC"
+        description="Personal Training im Nice Athletic Club Göppingen: Individueller Trainingsplan, 1:1 Coaching, messbare Ergebnisse. Zertifizierte Trainer, flexible Terminvergabe. Erstgespräch gratis!"
+        canonical="https://nicefitness.de/personal-training"
       />
 
       <motion.div

@@ -106,9 +106,10 @@ export default function UeberUns() {
   return (
     <>
       <PageMeta
-        title="Über uns – Nice Athletic Club"
-        description="Erfahre mehr über die Vision, die Geschichte und den Gründer des Nice Athletic Club Göppingen."
-        canonical="https://niceathleticclub.de/ueber-uns"
+        title="Über uns – Vision, Team & Geschichte | Nice Athletic Club Göppingen"
+        description="Der Nice Athletic Club Göppingen: Aus der Leidenschaft für Fitness entstanden. Lern unsere Geschichte, Mission und das Team hinter dem NAC kennen. Authentisch, ambitioniert, gemeinsam."
+        canonical="https://nicefitness.de/ueber-uns"
+        ogImage="https://nicefitness.de/images/ueber-uns/mimi-action.png"
       />
 
       <motion.div

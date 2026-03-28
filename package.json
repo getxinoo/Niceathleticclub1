@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "download-images": "node scripts/download-images.mjs",
+    "build:local": "node scripts/download-images.mjs && vite build",
+    "build:export": "vite build && node scripts/organize-images.mjs",
     "dev": "vite"
   },
   "dependencies": {

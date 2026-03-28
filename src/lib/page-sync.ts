@@ -18,7 +18,7 @@ import { PAGE_INITIAL_BLOCKS } from "../data/blocks";
 
 // ── Bump diese Version wenn PAGE_INITIAL_BLOCKS sich ändern ──────────────────
 // Format: YYYY-MM-DD-vN
-export const PAGES_SYNC_VERSION = "2026-03-25-v1";
+export const PAGES_SYNC_VERSION = "2026-03-27-v4";
 
 const SYNC_VERSION_KEY = "nac_pages_sync_version";
 const BLOCK_KEY_PREFIX = "nac_blocks_";
