@@ -29,6 +29,8 @@ import {
   TreePalm,
   MessageSquare,
   Repeat2,
+  BookOpen,
+  BarChart2,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
@@ -46,47 +48,64 @@ interface NavItem {
   permission?: PermissionKey;
 }
 
-// ── Grouped Sidebar Navigation (Permission-based) ─────────────────────────────
-const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+// ── Grouped Sidebar Navigation – 5 Gruppen nach md-Spec ──────────────────────
+const NAV_GROUPS: { label: string; icon: React.ElementType; items: NavItem[] }[] = [
   {
-    label: "CRM & Kunden",
+    label: "Übersicht",
+    icon: LayoutDashboard,
     items: [
-      { label: "Dashboard",   href: "/admin",            icon: LayoutDashboard, exact: true, permission: P.DASHBOARD_VIEW },
-      { label: "Leads",       href: "/admin/leads",      icon: Users,           permission: P.LEADS_READ },
-      { label: "Mitglieder",  href: "/admin/mitglieder", icon: UserCheck,        permission: P.MEMBERS_READ },
-      { label: "Antraege",    href: "/admin/antraege",   icon: Inbox,           permission: P.LEADS_WRITE },
+      { label: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true, permission: P.DASHBOARD_VIEW },
     ],
   },
   {
-    label: "Studio Management",
+    label: "Personen & CRM",
+    icon: Users,
     items: [
-      { label: "Kurse",        href: "/admin/kurse",      icon: Dumbbell,       permission: P.COURSES_READ },
-      { label: "Buchungen",    href: "/admin/buchungen",  icon: CalendarCheck2,  permission: P.BOOKINGS_READ },
-      { label: "Coaching",     href: "/admin/coaching",   icon: MessageSquare,   permission: P.COACHING_READ },
-      { label: "Finanzen",     href: "/admin/finanzen",   icon: CreditCard,      permission: P.FINANCES_READ },
-      { label: "Tarife",       href: "/admin/tarife",     icon: Euro,            permission: P.FINANCES_READ },
-      { label: "Presse",       href: "/admin/presse",     icon: Newspaper,       permission: P.CMS_MANAGE },
-      { label: "Bewertungen",  href: "/admin/reviews",    icon: Star,            permission: P.CMS_MANAGE },
+      { label: "Leads",       href: "/admin/leads",      icon: Users,          permission: P.LEADS_READ },
+      { label: "Mitglieder",  href: "/admin/mitglieder", icon: UserCheck,       permission: P.MEMBERS_READ },
+      { label: "Anträge",     href: "/admin/antraege",   icon: Inbox,          permission: P.LEADS_WRITE },
+      { label: "Team & Rechte",href: "/admin/team",       icon: UsersRound,     permission: P.TEAM_MANAGE },
     ],
   },
   {
-    label: "HR & Einsatzplanung",
+    label: "Studio Operations",
+    icon: Dumbbell,
     items: [
-      { label: "Team & Rechte",    href: "/admin/team",           icon: UsersRound,  permission: P.TEAM_MANAGE },
-      { label: "Karriere",          href: "/admin/karriere",       icon: Briefcase,   permission: P.HR_READ },
-      { label: "Bewerber-Zentrum",  href: "/admin/bewerber",       icon: UserPlus,    permission: P.HR_WRITE },
-      { label: "Einsatzplan",       href: "/admin/einsatzplan",    icon: CalendarDays, permission: P.SHIFTS_READ },
-      { label: "Abwesenheiten",     href: "/admin/abwesenheiten",  icon: TreePalm,    permission: P.ABSENCES_READ },
+      { label: "Kurse",       href: "/admin/kurse",      icon: Dumbbell,       permission: P.COURSES_READ },
+      { label: "Buchungen",   href: "/admin/buchungen",  icon: CalendarCheck2, permission: P.BOOKINGS_READ },
+      { label: "Coaching",    href: "/admin/coaching",   icon: MessageSquare,  permission: P.COACHING_READ },
+      { label: "Bewertungen", href: "/admin/reviews",    icon: Star,           permission: P.CMS_MANAGE },
+      { label: "System-Check",href: "/admin/diagnostics",icon: Server,         permission: P.DIAGNOSTICS_VIEW },
     ],
   },
   {
-    label: "System & Setup",
+    label: "HR & Personal",
+    icon: Briefcase,
     items: [
-      { label: "Seiten",          href: "/admin/seiten",         icon: FileText,    permission: P.CMS_MANAGE },
-      { label: "Einstellungen",    href: "/admin/einstellungen",  icon: Settings,    permission: P.SETTINGS_MANAGE },
-      { label: "Integrationen",    href: "/admin/integrations",   icon: Cable,       permission: P.INTEGRATIONS_MANAGE },
-      { label: "System-Check",     href: "/admin/diagnostics",    icon: Server,      permission: P.DIAGNOSTICS_VIEW },
-      { label: "Audit-Log",        href: "/admin/audit",          icon: ShieldAlert, permission: P.AUDIT_READ },
+      { label: "Karriere",         href: "/admin/karriere",      icon: Briefcase,   permission: P.HR_READ },
+      { label: "Bewerber",         href: "/admin/bewerber",      icon: UserPlus,    permission: P.HR_WRITE },
+      { label: "Einsatzplan",      href: "/admin/einsatzplan",   icon: CalendarDays, permission: P.SHIFTS_READ },
+      { label: "Abwesenheiten",    href: "/admin/abwesenheiten", icon: TreePalm,    permission: P.ABSENCES_READ },
+    ],
+  },
+  {
+    label: "Finanzen",
+    icon: Euro,
+    items: [
+      { label: "Rechnungen & SEPA", href: "/admin/finanzen", icon: CreditCard,  permission: P.FINANCES_READ },
+      { label: "Tarife",            href: "/admin/tarife",   icon: Euro,        permission: P.FINANCES_READ },
+    ],
+  },
+  {
+    label: "System & CMS",
+    icon: Settings,
+    items: [
+      { label: "Seiten",        href: "/admin/seiten",        icon: FileText,    permission: P.CMS_MANAGE },
+      { label: "Presse",        href: "/admin/presse",        icon: Newspaper,   permission: P.CMS_MANAGE },
+      { label: "Magazin",       href: "/admin/magazin",       icon: BookOpen,    permission: P.CMS_MANAGE },
+      { label: "Einstellungen", href: "/admin/einstellungen", icon: Settings,    permission: P.SETTINGS_MANAGE },
+      { label: "Integrationen", href: "/admin/integrations",  icon: Cable,       permission: P.INTEGRATIONS_MANAGE },
+      { label: "Audit-Log",     href: "/admin/audit",         icon: ShieldAlert, permission: P.AUDIT_READ },
     ],
   },
 ];

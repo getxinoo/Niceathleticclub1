@@ -56,6 +56,7 @@ import AdminBewerber    from "./admin/pages/AdminBewerber";
 import AdminEinsatzplan from "./admin/pages/AdminEinsatzplan";
 import AdminAbwesenheiten from "./admin/pages/AdminAbwesenheiten";
 import AdminCoaching     from "./admin/pages/AdminCoaching";
+import AdminMagazin      from "./admin/pages/AdminMagazin";
 
 // ── Member Portal Layout & Pages ─────────────────────────────────────────────
 import { MemberLayout }  from "./member/components/MemberLayout";
@@ -167,6 +168,7 @@ export const router = createBrowserRouter([
               { path: "einsatzplan",            Component: AdminEinsatzplan },
               { path: "abwesenheiten",          Component: AdminAbwesenheiten },
               { path: "coaching",                Component: AdminCoaching      },
+              { path: "magazin",                 Component: AdminMagazin       },
             ],
           },
         ],

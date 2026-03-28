@@ -642,25 +642,27 @@ export default function PageEditor() {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    handleSaveRef.current = handleSave; // keep ref in sync
+    // Ref synchron halten (für Ctrl+S Keyboard-Shortcut)
+    handleSaveRef.current = handleSave;
     setSaving(true);
 
-    // Immer zuerst in localStorage persistieren (schnell, offline-sicher)
-    // → alle CMS-Seiten lesen davon und rendern sofort die neuen Inhalte
+    // 1. SEO in localStorage persistieren
+    try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ }
+
+    // 2. Blöcke in localStorage persistieren (schnell, offline-sicher)
     try {
       localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(blocks));
       window.dispatchEvent(new CustomEvent("nac-page-updated", { detail: { slug } }));
     } catch { /* ignore */ }
 
-    // Dann async zur PHP-API (Best-Effort – schlägt im Offline-Modus still fehl)
+    // 3. Async zur PHP-API (Best-Effort – schlägt im Offline-Modus still fehl)
     try {
       await api.pages.saveBlocks(slug, {
         blocks: blocks as import("../../../lib/api-service").SerializedBlock[],
         published,
       });
     } catch (err) {
-      // API nicht erreichbar → kein Problem, localStorage hat die Daten
-      console.info("[PageEditor] PHP-API nicht erreichbar – Blöcke in localStorage gespeichert.", err);
+      console.info("[PageEditor] PHP-API nicht erreichbar – in localStorage gespeichert.", err);
     }
 
     setSaving(false);
@@ -946,8 +948,8 @@ export default function PageEditor() {
                   <p style={{ color: "#006621", fontSize: "11px", marginBottom: "3px" }}>nicefitness.de{meta.path}</p>
                   <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "11px", lineHeight: 1.5, display: "-webkit-box" as const, WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const, overflow: "hidden" }}>{seo.metaDescription || "Keine Meta-Description angegeben."}</p>
                 </div>
-                <button onClick={() => { try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ } handleSave(); }} className="flex items-center justify-center gap-2 text-white cursor-pointer active:scale-[0.98]" style={{ background: "var(--brand)", border: "none", padding: "12px", fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                  <Save size={12} /> SEO speichern
+                <button onClick={handleSaveRef.current} className="flex items-center justify-center gap-2 text-white cursor-pointer active:scale-[0.98]" style={{ background: "var(--brand)", border: "none", padding: "12px", fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  <Save size={12} /> Seite + SEO speichern
                 </button>
               </div>
             ) : (
