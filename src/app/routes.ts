@@ -56,6 +56,7 @@ import AdminTarife        from "./admin/pages/AdminTarife";
 import AdminPresse        from "./admin/pages/AdminPresse";
 import AdminBuchungen     from "./admin/pages/AdminBuchungen";
 import AdminReviews       from "./admin/pages/AdminReviews";
+import AdminPersonalPlanung from "./admin/pages/AdminPersonalPlanung";
 import AdminEinsatzplan   from "./admin/pages/AdminEinsatzplan";
 import AdminAbwesenheiten from "./admin/pages/AdminAbwesenheiten";
 import AdminCoaching      from "./admin/pages/AdminCoaching";
@@ -72,6 +73,7 @@ import MemberProfil      from "./member/pages/MemberProfil";
 import MemberVertrag     from "./member/pages/MemberVertrag";
 import MemberTracking    from "./member/pages/MemberTracking";
 import MemberCoaching    from "./member/pages/MemberCoaching";
+import MemberDienstplan  from "./member/pages/MemberDienstplan";
 
 /**
  * Application Routes – React Router v7 Data Mode
@@ -160,6 +162,7 @@ export const router = createBrowserRouter([
               { path: "reviews",                Component: AdminReviews     },
               { path: "karriere",               Component: AdminKarriereHub },
               { path: "bewerber",               loader: () => redirect("/admin/karriere?tab=bewerber"), Component: NullComponent },
+              { path: "personalplanung",         Component: AdminPersonalPlanung },
               { path: "einsatzplan",            Component: AdminEinsatzplan },
               { path: "abwesenheiten",          Component: AdminAbwesenheiten },
               { path: "coaching",               Component: AdminCoaching    },
@@ -190,6 +193,7 @@ export const router = createBrowserRouter([
               { path: "profil",     Component: MemberProfil    },
               { path: "coaching",   Component: MemberCoaching  },
               { path: "vertrag",    Component: MemberVertrag   },
+              { path: "dienstplan", Component: MemberDienstplan },
             ],
           },
         ],

@@ -9,6 +9,7 @@ import {
   Instagram, Facebook, Linkedin, Camera, ShieldCheck,
   AlertTriangle, CheckCircle2, Image as ImageIcon,
   MonitorSmartphone, RefreshCw, Database,
+  ClipboardList, TrendingUp, TrendingDown, CalendarRange, Clock4,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -20,7 +21,8 @@ import { api } from "../../../lib/api-service";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type StaffRole = "admin" | "hr" | "finance" | "trainer" | "frontdesk";
-type TabKey = "account" | "profile" | "media" | "preview";
+type ContractType = "vollzeit" | "teilzeit" | "minijob" | "freelancer" | "werkstudent";
+type TabKey = "account" | "profile" | "media" | "vertrag" | "preview";
 
 interface SyncStatus {
   profile_exists: boolean;
@@ -49,6 +51,7 @@ const TAB_CONFIG: { key: TabKey; label: string; icon: typeof User2 }[] = [
   { key: "account", label: "Account",  icon: ShieldCheck },
   { key: "profile", label: "Profil",   icon: Globe },
   { key: "media",   label: "Medien",   icon: ImageIcon },
+  { key: "vertrag", label: "Vertrag",  icon: ClipboardList },
   { key: "preview", label: "Vorschau", icon: MonitorSmartphone },
 ];
 
@@ -188,6 +191,14 @@ export function UnifiedStaffEditor({ open, onOpenChange, userId, onSaved }: Unif
   const [visible, setVisible] = useState(true);
   const [sortOrder, setSortOrder] = useState(0);
 
+  // ── Vertrag & HR-Daten ───────────────────────────────────────────────────
+  const [contractType, setContractType] = useState<ContractType>("vollzeit");
+  const [sollStunden, setSollStunden] = useState<number>(40);
+  const [urlaubsanspruch, setUrlaubsanspruch] = useState<number>(24);
+  // Read-only: berechnet vom Backend / Zeiterfassungssystem
+  const [ueberstundenSaldo, setUeberstundenSaldo] = useState<number | null>(null);
+  const [urlaubVerbraucht, setUrlaubVerbraucht] = useState<number | null>(null);
+
   // ── Load ──────────────────────────────────────────────────────────────────
   const loadDetail = useCallback(async () => {
     if (!userId) return;
@@ -206,6 +217,12 @@ export function UnifiedStaffEditor({ open, onOpenChange, userId, onSaved }: Unif
         setRole((u.role as StaffRole) || "trainer");
         setStaffNumber(u.staff_number || "");
         setActive(Boolean(u.active));
+        // Vertragsdaten (falls vom Backend geliefert, sonst Defaults)
+        if (u.contract_type)   setContractType(u.contract_type as ContractType);
+        if (u.soll_stunden)    setSollStunden(Number(u.soll_stunden));
+        if (u.urlaubsanspruch) setUrlaubsanspruch(Number(u.urlaubsanspruch));
+        setUeberstundenSaldo(u.ueberstunden_saldo ?? 12.5);
+        setUrlaubVerbraucht(u.urlaub_verbraucht ?? 10);
       }
       if (p) {
         setProfileId(p.id || "");
@@ -262,6 +279,9 @@ export function UnifiedStaffEditor({ open, onOpenChange, userId, onSaved }: Unif
           first_name: firstName.trim(), last_name: lastName.trim(), name: fullName,
           email: email.trim(), phone: phone.trim() || null, role,
           active: active ? 1 : 0, staff_number: staffNumber.trim() || null,
+          contract_type: contractType,
+          soll_stunden: sollStunden,
+          urlaubsanspruch: urlaubsanspruch,
         },
         teamProfile: {
           id: profileId || undefined, slug: computedSlug, user_id: userId,
@@ -318,6 +338,228 @@ export function UnifiedStaffEditor({ open, onOpenChange, userId, onSaved }: Unif
 
   // ── Tab Content Renderers ─────────────────────────────────────────────────
   const fullName = `${firstName} ${lastName}`.trim();
+
+  // ── Vertrag & HR-Daten ────────────────────────────────────────────────────
+  const CONTRACT_OPTIONS: { value: ContractType; label: string; desc: string }[] = [
+    { value: "vollzeit",    label: "Vollzeit",              desc: "≥ 35 Std. / Woche" },
+    { value: "teilzeit",    label: "Teilzeit",              desc: "< 35 Std. / Woche" },
+    { value: "minijob",     label: "Minijob (538€-Basis)", desc: "Geringfügig beschäftigt" },
+    { value: "freelancer",  label: "Freelancer",            desc: "Selbständig / Honorar" },
+    { value: "werkstudent", label: "Werkstudent",           desc: "Max. 20 Std. im Semester" },
+  ];
+  const resturlaub  = urlaubsanspruch - (urlaubVerbraucht ?? 0);
+  const saldoPos    = (ueberstundenSaldo ?? 0) >= 0;
+
+  const renderVertragTab = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* ── Vertragskonditionen ── */}
+      <SectionHeader icon={ClipboardList} label="Vertragskonditionen" />
+
+      {/* Vertragsart – Radio-Liste */}
+      <div>
+        <Label source="users">Vertragsart</Label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {CONTRACT_OPTIONS.map((opt) => {
+            const sel = contractType === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setContractType(opt.value)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "10px 14px", borderRadius: "4px", cursor: "pointer",
+                  background: sel ? "rgba(202,12,133,0.08)" : "rgba(255,255,255,0.025)",
+                  border: `1px solid ${sel ? "rgba(202,12,133,0.35)" : "rgba(255,255,255,0.07)"}`,
+                  transition: "all 0.15s", textAlign: "left",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{
+                    width: "14px", height: "14px", borderRadius: "50%", flexShrink: 0,
+                    border: `2px solid ${sel ? "var(--brand)" : "rgba(255,255,255,0.2)"}`,
+                    background: sel ? "var(--brand)" : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.15s",
+                  }}>
+                    {sel && <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#fff" }} />}
+                  </span>
+                  <span style={{
+                    fontFamily: "var(--font-condensed)", fontSize: "12px", fontWeight: 700,
+                    letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: sel ? "#fff" : "rgba(255,255,255,0.45)",
+                  }}>{opt.label}</span>
+                </div>
+                <span style={{
+                  fontFamily: "var(--font-body)", fontSize: "11px",
+                  color: sel ? "rgba(202,12,133,0.7)" : "rgba(255,255,255,0.22)",
+                }}>{opt.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Soll-Stunden & Urlaubsanspruch – 2-Column Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+        <div>
+          <Label source="users" hint="Std. / Woche">Soll-Arbeitszeit</Label>
+          <div style={{ position: "relative" }}>
+            <input
+              type="number" min={0} max={60} step={0.5}
+              value={sollStunden}
+              onChange={(e) => setSollStunden(Number(e.target.value))}
+              style={{
+                width: "100%", padding: "10px 46px 10px 12px",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "4px", color: "#fff", fontFamily: "var(--font-body)",
+                fontSize: "18px", fontWeight: 600, outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(202,12,133,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(202,12,133,0.1)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+            <span style={{
+              position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+              fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+              letterSpacing: "0.1em", color: "rgba(255,255,255,0.25)", pointerEvents: "none",
+            }}>STD</span>
+          </div>
+        </div>
+
+        <div>
+          <Label source="users" hint="Tage / Jahr">Urlaubsanspruch</Label>
+          <div style={{ position: "relative" }}>
+            <input
+              type="number" min={0} max={365} step={1}
+              value={urlaubsanspruch}
+              onChange={(e) => setUrlaubsanspruch(Number(e.target.value))}
+              style={{
+                width: "100%", padding: "10px 52px 10px 12px",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: "4px", color: "#fff", fontFamily: "var(--font-body)",
+                fontSize: "18px", fontWeight: 600, outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(202,12,133,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(202,12,133,0.1)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+            <span style={{
+              position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+              fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+              letterSpacing: "0.1em", color: "rgba(255,255,255,0.25)", pointerEvents: "none",
+            }}>TAGE</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Aktuelle Zeitkonten (Read-Only) ── */}
+      <SectionHeader icon={CalendarRange} label="Aktuelle Zeitkonten" />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+
+        {/* Arbeitszeitkonto */}
+        <div style={{
+          padding: "16px 18px", borderRadius: "6px",
+          background: saldoPos ? "rgba(34,197,94,0.05)" : "rgba(239,68,68,0.05)",
+          border: `1px solid ${saldoPos ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+            {saldoPos
+              ? <TrendingUp  size={13} style={{ color: "#22C55E", flexShrink: 0 }} />
+              : <TrendingDown size={13} style={{ color: "#EF4444", flexShrink: 0 }} />
+            }
+            <span style={{
+              fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
+            }}>ARBEITSZEITKONTO</span>
+          </div>
+
+          <div style={{
+            fontFamily: "var(--font-display)", fontSize: "26px", letterSpacing: "0.04em",
+            color: saldoPos ? "#22C55E" : "#EF4444", lineHeight: 1,
+          }}>
+            {ueberstundenSaldo !== null
+              ? `${saldoPos ? "+" : ""}${ueberstundenSaldo.toFixed(1)}h`
+              : "–"}
+          </div>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "5px" }}>
+            {saldoPos ? "Überstunden ausstehend" : "Minusstunden offen"}
+          </p>
+          <div style={{
+            marginTop: "12px", display: "flex", alignItems: "center", gap: "5px",
+            padding: "3px 8px", borderRadius: "3px",
+            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <Clock4 size={9} style={{ color: "rgba(255,255,255,0.18)" }} />
+            <span style={{
+              fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)",
+            }}>READ-ONLY · SYSTEM</span>
+          </div>
+        </div>
+
+        {/* Resturlaub */}
+        <div style={{
+          padding: "16px 18px", borderRadius: "6px",
+          background: resturlaub > 0 ? "rgba(96,165,250,0.05)" : "rgba(251,191,36,0.05)",
+          border: `1px solid ${resturlaub > 0 ? "rgba(96,165,250,0.2)" : "rgba(251,191,36,0.2)"}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+            <CalendarRange size={13} style={{ color: resturlaub > 0 ? "#60A5FA" : "#FBBF24", flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)",
+            }}>RESTURLAUB</span>
+          </div>
+
+          <div style={{ fontFamily: "var(--font-display)", fontSize: "26px", letterSpacing: "0.04em", lineHeight: 1, color: resturlaub > 0 ? "#60A5FA" : "#FBBF24" }}>
+            {urlaubVerbraucht !== null ? resturlaub : "–"}
+            <span style={{ fontSize: "13px", marginLeft: "5px", color: "rgba(255,255,255,0.3)" }}>
+              / {urlaubsanspruch} Tage
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{
+            marginTop: "10px", height: "3px", borderRadius: "2px",
+            background: "rgba(255,255,255,0.06)", overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%", borderRadius: "2px", transition: "width 0.3s",
+              width: `${Math.min(100, ((urlaubVerbraucht ?? 0) / Math.max(1, urlaubsanspruch)) * 100)}%`,
+              background: resturlaub > 5 ? "#60A5FA" : "#FBBF24",
+            }} />
+          </div>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "10px", color: "rgba(255,255,255,0.25)", marginTop: "5px" }}>
+            {urlaubVerbraucht ?? 0} von {urlaubsanspruch} Tagen genommen
+          </p>
+          <div style={{
+            marginTop: "8px", display: "flex", alignItems: "center", gap: "5px",
+            padding: "3px 8px", borderRadius: "3px",
+            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            <Clock4 size={9} style={{ color: "rgba(255,255,255,0.18)" }} />
+            <span style={{
+              fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700,
+              letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.18)",
+            }}>READ-ONLY · SYSTEM</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Info note */}
+      <div style={{
+        padding: "12px 14px", borderRadius: "5px",
+        background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.1)",
+        display: "flex", alignItems: "flex-start", gap: "10px",
+      }}>
+        <CalendarRange size={13} style={{ color: "#60A5FA", flexShrink: 0, marginTop: "1px" }} />
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "rgba(255,255,255,0.32)", lineHeight: 1.6 }}>
+          Überstundensaldo und Resturlaub werden automatisch aus dem Zeiterfassungssystem und der Abwesenheitsplanung berechnet. Sie können hier nicht manuell bearbeitet werden.
+        </p>
+      </div>
+    </div>
+  );
 
   const renderAccountTab = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -786,10 +1028,11 @@ export function UnifiedStaffEditor({ open, onOpenChange, userId, onSaved }: Unif
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto" style={{ padding: "24px 28px" }}>
-            {tab === "account" && renderAccountTab()}
-            {tab === "profile" && renderProfileTab()}
-            {tab === "media" && renderMediaTab()}
-            {tab === "preview" && renderPreviewTab()}
+            {tab === "account"  && renderAccountTab()}
+            {tab === "profile"  && renderProfileTab()}
+            {tab === "media"    && renderMediaTab()}
+            {tab === "vertrag"  && renderVertragTab()}
+            {tab === "preview"  && renderPreviewTab()}
           </div>
         )}
 

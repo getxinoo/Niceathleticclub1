@@ -34,6 +34,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   KeyRound,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
@@ -93,9 +94,8 @@ const NAV_GROUPS: { label: string; icon: React.ElementType; items: NavItem[] }[]
     label: "HR & Personal",
     icon: Briefcase,
     items: [
-      { label: "Karriere",      href: "/admin/karriere",      icon: Briefcase,    permission: P.HR_READ, badgeKey: "karriere" },
-      { label: "Einsatzplan",   href: "/admin/einsatzplan",   icon: CalendarDays, permission: P.SHIFTS_READ },
-      { label: "Abwesenheiten", href: "/admin/abwesenheiten", icon: TreePalm,     permission: P.ABSENCES_READ },
+      { label: "Karriere",              href: "/admin/karriere",       icon: Briefcase,     permission: P.HR_READ, badgeKey: "karriere" },
+      { label: "Personal- & Dienstplan",href: "/admin/personalplanung",icon: CalendarClock, permission: P.SHIFTS_READ },
     ],
   },
   {
