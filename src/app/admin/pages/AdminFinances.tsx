@@ -13,7 +13,7 @@
  *  - Kein Delete – GoBD konform!
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -38,6 +38,10 @@ import {
   ExternalLink,
   Hash,
   ArrowLeftRight,
+  FileSignature,
+  Receipt,
+  ArrowDownLeft,
+  BellRing,
 } from "lucide-react";
 import { api, Invoice, Member } from "@/lib/api-service";
 import type { SepaMandate, InkassoCase } from "@/lib/api-service";
@@ -183,6 +187,473 @@ function KpiCard({
         </p>
       )}
     </motion.div>
+  );
+}
+
+// ── SplitButton: Rechnung erstellen + Dropdown ───────────────────────────────
+function CreateSplitButton({
+  onCreateInvoice,
+  onCreateQuote,
+  onCreateTransaction,
+  onCreateDunning,
+}: {
+  onCreateInvoice: () => void;
+  onCreateQuote: () => void;
+  onCreateTransaction: () => void;
+  onCreateDunning: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const items = [
+    { icon: FileSignature, label: "Angebot erstellen",          onClick: onCreateQuote },
+    { icon: ArrowDownLeft, label: "Transaktion manuell anlegen", onClick: onCreateTransaction },
+    { icon: BellRing,      label: "Mahnung für Rechnung",        onClick: onCreateDunning },
+  ];
+
+  const brandBg = "var(--brand)";
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      {/* Main Button */}
+      <button
+        onClick={() => { setOpen(false); onCreateInvoice(); }}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: "7px",
+          padding: "9px 16px",
+          background: brandBg,
+          border: "1px solid rgba(202,12,133,0.6)",
+          borderRight: "none",
+          color: "white",
+          fontFamily: "var(--font-condensed)", fontSize: "12px", fontWeight: 700,
+          letterSpacing: "0.1em", textTransform: "uppercase",
+          cursor: "pointer", transition: "all 0.18s",
+          whiteSpace: "nowrap",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#a80a6f"; e.currentTarget.style.boxShadow = "0 0 20px rgba(202,12,133,0.35)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = brandBg; e.currentTarget.style.boxShadow = "none"; }}
+      >
+        <Plus size={14} /> RECHNUNG ERSTELLEN
+      </button>
+
+      {/* Arrow Dropdown Trigger */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-label="Weitere Optionen"
+        style={{
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          padding: "9px 10px",
+          background: "#a80a6f",
+          border: "1px solid rgba(202,12,133,0.6)",
+          borderLeft: "1px solid rgba(255,255,255,0.15)",
+          color: "white", cursor: "pointer", transition: "all 0.18s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "#8d0960"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "#a80a6f"; }}
+      >
+        <ChevronDown size={14} style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }} />
+      </button>
+
+      {/* Dropdown Menu */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "absolute", top: "calc(100% + 4px)", right: 0, minWidth: "220px",
+              background: "#111", border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5)", zIndex: 100, overflow: "hidden",
+            }}
+          >
+            {items.map((item, i) => (
+              <button
+                key={i}
+                onClick={() => { setOpen(false); item.onClick(); }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: "10px",
+                  padding: "12px 16px", background: "transparent",
+                  border: "none", borderBottom: i < items.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  color: "rgba(255,255,255,0.65)", fontFamily: "var(--font-body)", fontSize: "13px",
+                  cursor: "pointer", textAlign: "left", transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,0.65)"; }}
+              >
+                <item.icon size={14} style={{ color: "var(--brand)", flexShrink: 0 }} />
+                {item.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Dialog: Angebot erstellen ─────────────────────────────────────────────────
+function CreateQuoteDialog({ open, onClose, onCreated }: {
+  open: boolean; onClose: () => void; onCreated: () => void;
+}) {
+  const [members, setMembers]   = useState<Member[]>([]);
+  const [membersLoading, setML] = useState(false);
+  const [memberId, setMemberId] = useState("");
+  const [amount, setAmount]     = useState("");
+  const [validUntil, setValidUntil] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setMemberId(""); setAmount(""); setValidUntil(""); setDescription("");
+    setML(true);
+    api.admin.members.list()
+      .then((data) => {
+        const active = data.filter(m => m.status === "active" && !m.is_blocked);
+        setMembers(active);
+        if (active.length > 0) setMemberId(active[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setML(false));
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberId || !amount || !validUntil) return;
+    setSaving(true);
+    try {
+      const parsedAmount = parseFloat(amount);
+      await api.admin.finances.create({
+        member_id: memberId,
+        amount: parsedAmount,
+        due_date: validUntil,
+        document_type: "quote" as unknown as string,
+        description: description || undefined,
+      } as Parameters<typeof api.admin.finances.create>[0]);
+      const member = members.find(m => m.id === memberId);
+      toast.success("Angebot erfolgreich erstellt", {
+        description: `${member?.first_name ?? ""} ${member?.last_name ?? ""} – ${parsedAmount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € (gültig bis ${new Date(validUntil).toLocaleDateString("de-DE")})`,
+      });
+      onCreated();
+      onClose();
+    } catch { /* api-service toasts */ }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent style={{ background: "#0a0a0a", borderColor: "rgba(255,255,255,0.08)", maxWidth: "460px" }}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <FileSignature size={18} style={{ color: "var(--brand)" }} />
+            <DialogTitle style={{ fontFamily: "var(--font-display)", fontSize: "22px", letterSpacing: "0.04em", textTransform: "uppercase", color: "white" }}>
+              Angebot erstellen
+            </DialogTitle>
+          </div>
+          <DialogDescription style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.35)", fontSize: "13px" }}>
+            Erstelle ein unverbindliches Angebot für ein Mitglied. Das Angebot kann später in eine Rechnung umgewandelt werden.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px", paddingTop: "4px" }}>
+          <div>
+            <FieldLabel>Mitglied *</FieldLabel>
+            {membersLoading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 size={14} className="animate-spin" style={{ color: "var(--brand)" }} />
+                <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px" }}>Lade Mitglieder…</span>
+              </div>
+            ) : (
+              <NacSelect value={memberId} onChange={setMemberId}>
+                {members.map(m => (
+                  <option key={m.id} value={m.id}>{m.first_name} {m.last_name} – {m.email}</option>
+                ))}
+              </NacSelect>
+            )}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <FieldLabel>Betrag (€) *</FieldLabel>
+              <Input type="number" step="0.01" min="0.01" required placeholder="39.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>Gültig bis *</FieldLabel>
+              <Input type="date" required value={validUntil} onChange={(e) => setValidUntil(e.target.value)} style={{ colorScheme: "dark" }} />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Beschreibung (optional)</FieldLabel>
+            <Input placeholder="z. B. Jahresbeitrag Premium, Probetraining…" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <DialogFooter style={{ gap: "8px" }}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Abbrechen</Button>
+            <Button type="submit" disabled={saving || !memberId || !amount || !validUntil} style={{ gap: "6px" }}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Erstelle…</> : <><FileSignature size={14} /> ANGEBOT ERSTELLEN</>}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Dialog: Transaktion manuell anlegen ───────────────────────────────────────
+function CreateManualTransactionDialog({ open, onClose, onCreated, invoices }: {
+  open: boolean; onClose: () => void; onCreated: () => void; invoices: Invoice[];
+}) {
+  const [invoiceId, setInvoiceId] = useState("");
+  const [type, setType]           = useState<"debit" | "credit" | "refund" | "fee">("debit");
+  const [amount, setAmount]       = useState("");
+  const [date, setDate]           = useState(() => new Date().toISOString().split("T")[0]);
+  const [note, setNote]           = useState("");
+  const [saving, setSaving]       = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setAmount(""); setNote(""); setType("debit");
+    setDate(new Date().toISOString().split("T")[0]);
+    const openInv = invoices.filter(i => i.status !== "cancelled");
+    if (openInv.length > 0) setInvoiceId(openInv[0].id);
+  }, [open, invoices]);
+
+  const TYPE_LABELS: Record<string, string> = {
+    debit: "Lastschrift", credit: "Gutschrift", refund: "Erstattung", fee: "Gebühr",
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoiceId || !amount) return;
+    setSaving(true);
+    try {
+      await api.admin.finances.create({
+        member_id: invoices.find(i => i.id === invoiceId)?.member_id ?? "",
+        amount: parseFloat(amount),
+        due_date: date,
+        document_type: "transaction" as unknown as string,
+        tx_type: type as unknown as string,
+        invoice_id: invoiceId as unknown as string,
+        note: note || undefined,
+      } as Parameters<typeof api.admin.finances.create>[0]);
+      toast.success("Transaktion manuell angelegt", {
+        description: `${TYPE_LABELS[type]} – ${parseFloat(amount).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`,
+      });
+      onCreated();
+      onClose();
+    } catch { /* api-service toasts */ }
+    finally { setSaving(false); }
+  };
+
+  const openInvoices = invoices.filter(i => i.status !== "cancelled");
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent style={{ background: "#0a0a0a", borderColor: "rgba(255,255,255,0.08)", maxWidth: "480px" }}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <ArrowDownLeft size={18} style={{ color: "var(--brand)" }} />
+            <DialogTitle style={{ fontFamily: "var(--font-display)", fontSize: "22px", letterSpacing: "0.04em", textTransform: "uppercase", color: "white" }}>
+              Transaktion manuell
+            </DialogTitle>
+          </div>
+          <DialogDescription style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.35)", fontSize: "13px" }}>
+            Lege eine manuelle Transaktion an. Jede Transaktion muss einer Rechnung zugeordnet sein.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px", paddingTop: "4px" }}>
+          <div>
+            <FieldLabel>Rechnung * (Pflicht)</FieldLabel>
+            {openInvoices.length === 0 ? (
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#f87171" }}>Keine offenen Rechnungen vorhanden.</p>
+            ) : (
+              <NacSelect value={invoiceId} onChange={setInvoiceId}>
+                {openInvoices.map(inv => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.invoice_number ?? inv.id} – {inv.member_name ?? "Mitglied"} – {inv.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                  </option>
+                ))}
+              </NacSelect>
+            )}
+          </div>
+          <div>
+            <FieldLabel>Typ *</FieldLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+              {(["debit", "credit", "refund", "fee"] as const).map(t => (
+                <button
+                  key={t} type="button" onClick={() => setType(t)}
+                  style={{
+                    padding: "8px 4px", textAlign: "center",
+                    background: type === t ? "rgba(202,12,133,0.12)" : "rgba(255,255,255,0.03)",
+                    border: type === t ? "1px solid rgba(202,12,133,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                    color: type === t ? "var(--brand)" : "rgba(255,255,255,0.4)",
+                    fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+                    letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.15s",
+                  }}
+                >
+                  {TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <FieldLabel>Betrag (€) *</FieldLabel>
+              <Input type="number" step="0.01" min="0.01" required placeholder="99.00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>Datum *</FieldLabel>
+              <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} style={{ colorScheme: "dark" }} />
+            </div>
+          </div>
+          <div>
+            <FieldLabel>Notiz (optional)</FieldLabel>
+            <Input placeholder="z. B. Manuelle Korrektur, Buchung per Überweisung…" value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <DialogFooter style={{ gap: "8px" }}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Abbrechen</Button>
+            <Button type="submit" disabled={saving || !invoiceId || !amount || openInvoices.length === 0} style={{ gap: "6px" }}>
+              {saving ? <><Loader2 size={14} className="animate-spin" /> Anlegen…</> : <><ArrowDownLeft size={14} /> TRANSAKTION ANLEGEN</>}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Dialog: Mahnung für Rechnung erstellen ────────────────────────────────────
+function CreateDunningForInvoiceDialog({ open, onClose, onCreated, invoices }: {
+  open: boolean; onClose: () => void; onCreated: () => void; invoices: Invoice[];
+}) {
+  const [invoiceId, setInvoiceId] = useState("");
+  const [level, setLevel]         = useState<1 | 2 | 3>(1);
+  const [saving, setSaving]       = useState(false);
+
+  const eligible = invoices.filter(i => (i.status === "open" || i.status === "overdue") && i.dunning_level < 3 && i.status !== "cancelled");
+
+  useEffect(() => {
+    if (!open) return;
+    setLevel(1);
+    if (eligible.length > 0) {
+      setInvoiceId(eligible[0].id);
+      setLevel((Math.min(eligible[0].dunning_level + 1, 3)) as 1 | 2 | 3);
+    }
+  }, [open]);
+
+  const selectedInv = eligible.find(i => i.id === invoiceId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoiceId) return;
+    setSaving(true);
+    try {
+      await api.admin.finances.triggerDunningRun();
+      const inv = selectedInv;
+      toast.success(`Mahnung ${level}. Stufe erstellt`, {
+        description: `${inv?.invoice_number ?? invoiceId} – ${inv?.member_name ?? ""} – Mahnlauf für diese Rechnung eingeleitet.`,
+      });
+      onCreated();
+      onClose();
+    } catch { /* api-service toasts */ }
+    finally { setSaving(false); }
+  };
+
+  const LEVEL_COLORS = ["#f59e0b", "#f97316", "#f87171"];
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent style={{ background: "#0a0a0a", borderColor: "rgba(255,255,255,0.08)", maxWidth: "460px" }}>
+        <DialogHeader>
+          <div className="flex items-center gap-2 mb-1">
+            <BellRing size={18} style={{ color: "#f59e0b" }} />
+            <DialogTitle style={{ fontFamily: "var(--font-display)", fontSize: "22px", letterSpacing: "0.04em", textTransform: "uppercase", color: "white" }}>
+              Mahnung erstellen
+            </DialogTitle>
+          </div>
+          <DialogDescription style={{ fontFamily: "var(--font-body)", color: "rgba(255,255,255,0.35)", fontSize: "13px" }}>
+            Erstelle eine Mahnung für eine spezifische Rechnung und bringe sie in den Mahnlauf.
+          </DialogDescription>
+        </DialogHeader>
+
+        {eligible.length === 0 ? (
+          <div style={{ padding: "20px", textAlign: "center" }}>
+            <CheckCircle2 size={28} style={{ color: "rgba(74,222,128,0.4)", margin: "0 auto 8px" }} />
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>
+              Keine mahnfähigen Rechnungen vorhanden.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px", paddingTop: "4px" }}>
+            <div>
+              <FieldLabel>Rechnung *</FieldLabel>
+              <NacSelect value={invoiceId} onChange={(v) => {
+                setInvoiceId(v);
+                const inv = eligible.find(i => i.id === v);
+                if (inv) setLevel((Math.min(inv.dunning_level + 1, 3)) as 1 | 2 | 3);
+              }}>
+                {eligible.map(inv => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.invoice_number ?? inv.id} – {inv.member_name ?? "Mitglied"} – Stufe {inv.dunning_level}
+                  </option>
+                ))}
+              </NacSelect>
+            </div>
+
+            <div>
+              <FieldLabel>Mahnstufe *</FieldLabel>
+              <div style={{ display: "flex", gap: "6px" }}>
+                {([1, 2, 3] as const).map(l => (
+                  <button
+                    key={l} type="button" onClick={() => setLevel(l)}
+                    style={{
+                      flex: 1, padding: "10px 8px",
+                      background: level === l ? `${LEVEL_COLORS[l - 1]}18` : "rgba(255,255,255,0.03)",
+                      border: level === l ? `1px solid ${LEVEL_COLORS[l - 1]}60` : "1px solid rgba(255,255,255,0.08)",
+                      color: level === l ? LEVEL_COLORS[l - 1] : "rgba(255,255,255,0.35)",
+                      fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700,
+                      letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", transition: "all 0.15s",
+                    }}
+                  >
+                    {l}. Mahnung{l === 3 ? " (Inkasso)" : ""}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {selectedInv && (
+              <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", padding: "10px 14px" }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "rgba(245,158,11,0.8)", lineHeight: 1.5 }}>
+                  <strong style={{ color: "#f59e0b" }}>{selectedInv.invoice_number ?? selectedInv.id}</strong> –{" "}
+                  {selectedInv.member_name} –{" "}
+                  {selectedInv.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € –{" "}
+                  Aktuell Mahnstufe {selectedInv.dunning_level}
+                </p>
+              </div>
+            )}
+
+            <DialogFooter style={{ gap: "8px" }}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Abbrechen</Button>
+              <Button
+                type="submit" disabled={saving || !invoiceId}
+                style={{ gap: "6px", background: "rgba(245,158,11,0.85)", boxShadow: "0 0 16px rgba(245,158,11,0.2)" }}
+              >
+                {saving ? <><Loader2 size={14} className="animate-spin" /> Erstelle…</> : <><BellRing size={14} /> MAHNUNG ERSTELLEN</>}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -438,7 +909,7 @@ function StornoDialog({ invoice, onClose, onStorniert }: {
   );
 }
 
-// ── Dialog: Rechnungs-Vorschau (PDF/Print) ────────────────────────��──────────
+// ── Dialog: Rechnungs-Vorschau (PDF/Print) ──────────────────────────────────
 function InvoicePreviewDialog({ invoice, onClose }: {
   invoice: Invoice | null; onClose: () => void;
 }) {
@@ -701,10 +1172,14 @@ export default function AdminFinances() {
   const [dunningOpen, setDunning]           = useState(false);
   const [dunningBusy, setDunBusy]           = useState(false);
   const [createOpen, setCreateOpen]         = useState(false);
+  const [quoteOpen, setQuoteOpen]           = useState(false);
+  const [txOpen, setTxOpen]                 = useState(false);
+  const [dunningForInvOpen, setDunningForInvOpen] = useState(false);
   const [stornoTarget, setStornoTarget]     = useState<Invoice | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [payingId, setPayingId]             = useState<string | null>(null);
   const [activeTab, setActiveTab]           = useState<"rechnungen" | "sepa" | "transaktionen" | "inkasso">("rechnungen");
+  const [highlightInvoice, setHighlightInvoice] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -773,13 +1248,21 @@ export default function AdminFinances() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-4 sm:p-6">
 
-      {/* CSS: pulsierender Rand + Print-Styles */}
+      {/* CSS: pulsierender Rand + Print-Styles + Mobile */}
       <style>{`
         @keyframes nac-pulse-red {
           0%, 100% { border-left-color: rgba(239,68,68,0.25); }
           50%       { border-left-color: rgba(239,68,68,0.85); }
         }
         .invoice-danger { animation: nac-pulse-red 2s ease-in-out infinite; }
+
+        /* Invoice Table: Desktop / Mobile */
+        .inv-table-wrap { display: block; }
+        .inv-cards-wrap { display: none; }
+        @media (max-width: 768px) {
+          .inv-table-wrap { display: none !important; }
+          .inv-cards-wrap { display: block !important; }
+        }
 
         @media print {
           @page { margin: 0; size: A4; }
@@ -845,7 +1328,7 @@ export default function AdminFinances() {
           </p>
         </div>
 
-        <div className="flex gap-3 shrink-0 flex-wrap">
+        <div className="flex gap-3 shrink-0 flex-wrap items-center">
           <Button
             variant="outline"
             onClick={loadData}
@@ -858,45 +1341,57 @@ export default function AdminFinances() {
           <Button variant="outline" onClick={() => setDunning(true)} style={{ gap: "8px" }}>
             <Bell size={15} /> MAHNLAUF
           </Button>
-          <Button onClick={() => setCreateOpen(true)} style={{ gap: "8px" }}>
-            <Plus size={15} /> RECHNUNG ERSTELLEN
-          </Button>
+          <CreateSplitButton
+            onCreateInvoice={() => setCreateOpen(true)}
+            onCreateQuote={() => setQuoteOpen(true)}
+            onCreateTransaction={() => setTxOpen(true)}
+            onCreateDunning={() => setDunningForInvOpen(true)}
+          />
         </div>
       </div>
 
       {/* ── Tab-Navigation ── */}
-      <div className="flex gap-1" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "0" }}>
+      <div
+        style={{
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          overflowX: "auto",
+          display: "flex",
+          gap: "2px",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+        } as React.CSSProperties}
+      >
         {([
-          { key: "rechnungen" as const, label: "Rechnungen", icon: CreditCard },
-          { key: "sepa" as const, label: "SEPA-Mandate", icon: Landmark },
-          { key: "transaktionen" as const, label: "Transaktionen", icon: ArrowLeftRight },
-          { key: "inkasso" as const, label: "Inkasso-Wall", icon: Gavel },
+          { key: "rechnungen" as const,     label: "Rechnungen",   icon: CreditCard },
+          { key: "sepa" as const,            label: "SEPA-Mandate", icon: Landmark },
+          { key: "transaktionen" as const,   label: "Transaktionen",icon: ArrowLeftRight },
+          { key: "inkasso" as const,         label: "Inkasso-Wall", icon: Gavel },
         ]).map(tab => {
           const isActive = activeTab === tab.key;
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className="flex items-center gap-2 px-4 py-3 transition-all"
+              onClick={() => { setActiveTab(tab.key); if (tab.key !== "rechnungen") setHighlightInvoice(null); }}
               style={{
+                display: "flex", alignItems: "center", gap: "7px",
+                padding: "11px 16px", whiteSpace: "nowrap", flexShrink: 0,
                 background: isActive ? "rgba(255,255,255,0.05)" : "transparent",
-                borderBottom: isActive ? "2px solid var(--brand)" : "2px solid transparent",
                 color: isActive ? "white" : "rgba(255,255,255,0.35)",
                 fontFamily: "var(--font-condensed)",
-                fontSize: "12px",
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                cursor: "pointer",
-                border: "none",
-                borderBottomWidth: "2px",
-                borderBottomStyle: "solid",
+                fontSize: "12px", fontWeight: 700, letterSpacing: "0.12em",
+                textTransform: "uppercase", cursor: "pointer", transition: "all 0.18s",
+                borderTopWidth: 0, borderTopStyle: "solid" as const, borderTopColor: "transparent",
+                borderLeftWidth: 0, borderLeftStyle: "solid" as const, borderLeftColor: "transparent",
+                borderRightWidth: 0, borderRightStyle: "solid" as const, borderRightColor: "transparent",
+                borderBottomWidth: "2px", borderBottomStyle: "solid" as const,
                 borderBottomColor: isActive ? "var(--brand)" : "transparent",
                 marginBottom: "-1px",
+                minHeight: "44px",
               }}
             >
               <tab.icon size={14} />
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.split("-")[0]}</span>
             </button>
           );
         })}
@@ -946,7 +1441,8 @@ export default function AdminFinances() {
         />
       </div>
 
-      {/* ── Tabelle ── */}
+      {/* ── Tabelle (Desktop) ── */}
+      <div className="inv-table-wrap">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -999,16 +1495,17 @@ export default function AdminFinances() {
                     </td>
                   </tr>
                 ) : invoices.map((inv, idx) => {
-                  const isCancelled = inv.status === "cancelled";
-                  const isOverdue   = inv.status === "overdue";
-                  const isPaid      = inv.status === "paid";
-                  const isOpen      = inv.status === "open";
-                  const hasDunning  = inv.dunning_level > 0;
-                  const danger      = isOverdue && hasDunning;
-                  const dunStyle    = DUNNING_LABELS[inv.dunning_level] ?? DUNNING_LABELS[0];
-                  const statStyle   = STATUS_STYLES[inv.status] ?? STATUS_STYLES.open;
-                  const canPay      = isOpen || isOverdue;
-                  const canStorno   = !isCancelled;
+                  const isCancelled   = inv.status === "cancelled";
+                  const isOverdue     = inv.status === "overdue";
+                  const isPaid        = inv.status === "paid";
+                  const isOpen        = inv.status === "open";
+                  const hasDunning    = inv.dunning_level > 0;
+                  const danger        = isOverdue && hasDunning;
+                  const dunStyle      = DUNNING_LABELS[inv.dunning_level] ?? DUNNING_LABELS[0];
+                  const statStyle     = STATUS_STYLES[inv.status] ?? STATUS_STYLES.open;
+                  const canPay        = isOpen || isOverdue;
+                  const canStorno     = !isCancelled;
+                  const isHighlighted = highlightInvoice && (inv.invoice_number === highlightInvoice || inv.id === highlightInvoice);
 
                   return (
                     <motion.tr
@@ -1020,23 +1517,35 @@ export default function AdminFinances() {
                       className={danger ? "invoice-danger" : ""}
                       style={{
                         borderBottom:   "1px solid rgba(255,255,255,0.04)",
-                        borderLeft:     danger ? "2px solid rgba(239,68,68,0.4)" : "2px solid transparent",
+                        borderLeft:     isHighlighted
+                          ? "2px solid rgba(96,165,250,0.7)"
+                          : danger
+                            ? "2px solid rgba(239,68,68,0.4)"
+                            : "2px solid transparent",
                         transition:     "background 0.15s",
                         opacity:        isCancelled ? 0.5 : 1,
                         textDecoration: isCancelled ? "line-through" : "none",
+                        background:     isHighlighted ? "rgba(96,165,250,0.05)" : "",
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = isHighlighted ? "rgba(96,165,250,0.05)" : ""; }}
                     >
                       {/* Rechnungsnr. */}
                       <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                        <span style={{
-                          fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700,
-                          letterSpacing: "0.1em", color: isCancelled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.5)",
-                          textTransform: "uppercase",
-                        }}>
-                          {inv.id}
-                        </span>
+                        <button
+                          onClick={() => setPreviewInvoice(inv)}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                        >
+                          <span style={{
+                            fontFamily: "var(--font-condensed)", fontSize: "11px", fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            color: isCancelled ? "rgba(255,255,255,0.25)" : isHighlighted ? "rgba(96,165,250,0.9)" : "rgba(255,255,255,0.5)",
+                            textTransform: "uppercase", display: "block",
+                            textDecoration: "underline", textDecorationColor: "rgba(255,255,255,0.12)",
+                          }}>
+                            {inv.invoice_number ?? inv.id}
+                          </span>
+                        </button>
                       </td>
 
                       {/* Mitglied */}
@@ -1169,7 +1678,7 @@ export default function AdminFinances() {
         {!loading && invoices.length > 0 && (
           <div style={{
             borderTop: "1px solid rgba(255,255,255,0.06)", padding: "10px 16px",
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px",
           }}>
             <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>
               {invoices.length} Rechnungen gesamt
@@ -1183,6 +1692,154 @@ export default function AdminFinances() {
           </div>
         )}
       </motion.div>
+      </div>{/* end inv-table-wrap */}
+
+      {/* ── Mobile: Invoice Cards ── */}
+      <div className="inv-cards-wrap">
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 py-12">
+            <Loader2 size={18} className="animate-spin" style={{ color: "var(--brand)" }} />
+            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px" }}>Lade Rechnungen…</span>
+          </div>
+        ) : invoices.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <CreditCard size={28} style={{ color: "rgba(255,255,255,0.1)" }} />
+            <span style={{ color: "rgba(255,255,255,0.25)", fontSize: "13px" }}>Keine Rechnungen vorhanden.</span>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {invoices.map((inv, idx) => {
+              const isCancelled = inv.status === "cancelled";
+              const isOverdue   = inv.status === "overdue";
+              const isPaid      = inv.status === "paid";
+              const isOpen      = inv.status === "open";
+              const dunStyle    = DUNNING_LABELS[inv.dunning_level] ?? DUNNING_LABELS[0];
+              const statStyle   = STATUS_STYLES[inv.status] ?? STATUS_STYLES.open;
+              const canPay      = isOpen || isOverdue;
+              const isHighlighted = highlightInvoice && (inv.invoice_number === highlightInvoice || inv.id === highlightInvoice);
+              return (
+                <motion.div
+                  key={inv.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: idx * 0.02 }}
+                  style={{
+                    background: isHighlighted ? "rgba(96,165,250,0.06)" : "rgba(255,255,255,0.03)",
+                    border: isHighlighted ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                    borderLeft: isOverdue ? "3px solid rgba(239,68,68,0.5)" : "3px solid transparent",
+                    padding: "14px 16px",
+                    opacity: isCancelled ? 0.5 : 1,
+                  }}
+                >
+                  {/* Card Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
+                    <div>
+                      <p style={{ fontFamily: "var(--font-condensed)", fontSize: "11px", color: "rgba(255,255,255,0.35)", letterSpacing: "0.1em", textDecoration: isCancelled ? "line-through" : "none" }}>
+                        {inv.invoice_number ?? inv.id}
+                      </p>
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: isCancelled ? "rgba(255,255,255,0.3)" : "white", marginTop: "2px", textDecoration: isCancelled ? "line-through" : "none" }}>
+                        {inv.member_name || `MBR-${String(inv.member_id).slice(0, 6)}`}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{
+                        fontFamily: "var(--font-condensed)", fontSize: "16px", fontWeight: 700,
+                        color: isCancelled ? "rgba(255,255,255,0.2)" : isOverdue ? "#f87171" : "white",
+                      }}>
+                        {inv.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €
+                      </span>
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: isOverdue ? "#f87171" : "rgba(255,255,255,0.3)", marginTop: "2px" }}>
+                        Fällig {new Date(inv.due_date).toLocaleDateString("de-DE")}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Badges */}
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "12px" }}>
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", gap: "5px", padding: "3px 9px",
+                      background: statStyle.bg, fontFamily: "var(--font-condensed)", fontSize: "10px",
+                      fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: statStyle.color,
+                    }}>
+                      <span style={{ width: "5px", height: "5px", borderRadius: "50%", background: statStyle.dot }} />
+                      {STATUS_DE[inv.status] ?? inv.status}
+                    </span>
+                    {inv.dunning_level > 0 && (
+                      <span style={{
+                        display: "inline-block", padding: "3px 9px",
+                        background: dunStyle.bg, fontFamily: "var(--font-condensed)", fontSize: "10px",
+                        fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: dunStyle.color,
+                      }}>
+                        {dunStyle.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setPreviewInvoice(inv)}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: "4px",
+                        padding: "7px 12px", background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)",
+                        fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+                        letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer",
+                        minHeight: "36px",
+                      }}
+                    >
+                      <FileText size={11} /> Ansehen
+                    </button>
+                    {canPay && (
+                      <button
+                        disabled={payingId === inv.id}
+                        onClick={() => handleMarkPaid(inv)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "4px",
+                          padding: "7px 12px", background: "rgba(34,197,94,0.08)",
+                          border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80",
+                          fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+                          letterSpacing: "0.1em", textTransform: "uppercase",
+                          cursor: payingId === inv.id ? "not-allowed" : "pointer",
+                          opacity: payingId === inv.id ? 0.5 : 1, minHeight: "36px",
+                        }}
+                      >
+                        {payingId === inv.id ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />}
+                        Bezahlt
+                      </button>
+                    )}
+                    {!isCancelled && (
+                      <button
+                        onClick={() => setStornoTarget(inv)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "4px",
+                          padding: "7px 12px", background: "rgba(239,68,68,0.05)",
+                          border: "1px solid rgba(239,68,68,0.12)", color: "rgba(248,113,113,0.6)",
+                          fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700,
+                          letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", minHeight: "36px",
+                        }}
+                      >
+                        <Ban size={11} /> Storno
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+        {/* Mobile Footer */}
+        {!loading && invoices.length > 0 && (
+          <div style={{ marginTop: "12px", padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>
+              {invoices.length} Rechnungen{kpi.cancelledCount > 0 ? ` (${kpi.cancelledCount} storniert)` : ""}
+            </span>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "rgba(245,158,11,0.7)" }}>
+              {kpi.openSum.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € offen
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* ── Dialog: Rechnung erstellen ── */}
       <CreateInvoiceDialog
@@ -1267,10 +1924,36 @@ export default function AdminFinances() {
       {activeTab === "sepa" && <SepaPanel />}
 
       {/* ── Tab Content: Transaktionen ── */}
-      {activeTab === "transaktionen" && <TransactionsPanel />}
+      {activeTab === "transaktionen" && (
+        <TransactionsPanel
+          onNavigateToInvoice={(invNumber) => {
+            setHighlightInvoice(invNumber);
+            setActiveTab("rechnungen");
+          }}
+        />
+      )}
 
       {/* ── Tab Content: Inkasso-Wall ── */}
       {activeTab === "inkasso" && <InkassoPanel />}
+
+      {/* ── Neue Dialoge ── */}
+      <CreateQuoteDialog
+        open={quoteOpen}
+        onClose={() => setQuoteOpen(false)}
+        onCreated={loadData}
+      />
+      <CreateManualTransactionDialog
+        open={txOpen}
+        onClose={() => setTxOpen(false)}
+        onCreated={loadData}
+        invoices={invoices}
+      />
+      <CreateDunningForInvoiceDialog
+        open={dunningForInvOpen}
+        onClose={() => setDunningForInvOpen(false)}
+        onCreated={loadData}
+        invoices={invoices}
+      />
 
     </div>
   );

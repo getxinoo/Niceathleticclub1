@@ -1,4 +1,12 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, redirect } from "react-router";
+
+// ── Null component used for loader-only redirect routes ───────────────────────
+// React Router v7 requires a Component on every leaf route, even redirect-only
+// ones. Without it the router renders a null <Outlet> = blank page.
+const NullComponent = () => null;
+
+// ── HydrateFallback: shown during initial client hydration on data routes ──────
+const HydrateFallback = () => null;
 
 // ── App Root (providers: Auth, Helmet, Toaster) ───────────────────────────────
 import { AppRoot } from "./components/layout/AppRoot";
@@ -33,30 +41,27 @@ import { AdminGuard, MemberGuard } from "./components/ProtectedRoute";
 import { VisibilityRoute } from "./components/VisibilityRoute";
 
 // ── Admin Layout & Pages ─────────────────────────────────────────────────────
-import { AdminLayout }   from "./admin/components/AdminLayout";
-import Dashboard         from "./admin/pages/Dashboard";
-import AdminLeads        from "./admin/pages/AdminLeads";
-import AdminKurse        from "./admin/pages/AdminKurse";
-import AdminMembers      from "./admin/pages/AdminMembers";
-import AdminFinances     from "./admin/pages/AdminFinances";
-import AdminAudit        from "./admin/pages/AdminAudit";
-import AdminSeiten       from "./admin/pages/AdminSeiten";
-import AdminSettings     from "./admin/pages/AdminSettings";
-import PageEditor        from "./admin/pages/PageEditor";
-import AdminAntraege     from "./admin/pages/AdminAntraege";
-import AdminDiagnostics  from "./admin/pages/AdminDiagnostics";
-import AdminTeam         from "./admin/pages/AdminTeam";
-import AdminIntegrations from "./admin/pages/AdminIntegrations";
-import AdminTarife       from "./admin/pages/AdminTarife";
-import AdminPresse       from "./admin/pages/AdminPresse";
-import AdminBuchungen   from "./admin/pages/AdminBuchungen";
-import AdminReviews     from "./admin/pages/AdminReviews";
-import AdminKarriere    from "./admin/pages/AdminKarriere";
-import AdminBewerber    from "./admin/pages/AdminBewerber";
-import AdminEinsatzplan from "./admin/pages/AdminEinsatzplan";
+import { AdminLayout }    from "./admin/components/AdminLayout";
+import Dashboard          from "./admin/pages/Dashboard";
+import AdminLeads         from "./admin/pages/AdminLeads";
+import AdminKurse         from "./admin/pages/AdminKurse";
+import AdminMembers       from "./admin/pages/AdminMembers";
+import AdminFinances      from "./admin/pages/AdminFinances";
+import AdminSeiten        from "./admin/pages/AdminSeiten";
+import AdminSettings      from "./admin/pages/AdminSettings";
+import PageEditor         from "./admin/pages/PageEditor";
+import AdminAntraege      from "./admin/pages/AdminAntraege";
+import AdminTeam          from "./admin/pages/AdminTeam";
+import AdminTarife        from "./admin/pages/AdminTarife";
+import AdminPresse        from "./admin/pages/AdminPresse";
+import AdminBuchungen     from "./admin/pages/AdminBuchungen";
+import AdminReviews       from "./admin/pages/AdminReviews";
+import AdminEinsatzplan   from "./admin/pages/AdminEinsatzplan";
 import AdminAbwesenheiten from "./admin/pages/AdminAbwesenheiten";
-import AdminCoaching     from "./admin/pages/AdminCoaching";
-import AdminMagazin      from "./admin/pages/AdminMagazin";
+import AdminCoaching      from "./admin/pages/AdminCoaching";
+import AdminMagazin       from "./admin/pages/AdminMagazin";
+import AdminSystemHub     from "./admin/pages/AdminSystemHub";
+import AdminKarriereHub   from "./admin/pages/AdminKarriereHub";
 
 // ── Member Portal Layout & Pages ─────────────────────────────────────────────
 import { MemberLayout }  from "./member/components/MemberLayout";
@@ -66,34 +71,30 @@ import MemberBuchungen   from "./member/pages/MemberBuchungen";
 import MemberProfil      from "./member/pages/MemberProfil";
 import MemberVertrag     from "./member/pages/MemberVertrag";
 import MemberTracking    from "./member/pages/MemberTracking";
-import MemberCoaching   from "./member/pages/MemberCoaching";
+import MemberCoaching    from "./member/pages/MemberCoaching";
 
 /**
  * Application Routes – React Router v7 Data Mode
- *
- * FIX (Sprint 18): AppRoot hat jetzt einen expliziten path: "/" und alle
- * direkten Kinder verwenden RELATIVE Pfade (kein fuehrendes "/").
- * Das ist die korrekte Praxis fuer React Router v7 – pathlose Root-Routen
- * mit absoluten Child-Pfaden koennen dazu fuehren, dass AppRoot nicht
- * im Render-Tree ist, wenn Kinder rendern (AuthProvider fehlt).
  *
  * Route-Hierarchie:
  *   path "/"         → AppRoot  (AuthProvider + HelmetProvider + Toaster)
  *   ├─ "login"       → Login
  *   ├─ (pathless)    → RootLayout (public website)
  *   │    ├─ index    → Home
- *   │    ├─ "kurse"  → Kurse
  *   │    └─ ...
  *   ├─ "admin"       → AdminGuard → AdminLayout → ...
  *   └─ "member"      → MemberGuard → MemberLayout → ...
+ *
+ * Legacy redirects (loader-based, instant, no render):
+ *   /admin/diagnostics  → /admin/system?tab=systemcheck
+ *   /admin/integrations → /admin/system?tab=integrationen
+ *   /admin/audit        → /admin/system?tab=audit
  */
 export const router = createBrowserRouter([
   {
-    // AppRoot haelt AuthProvider + HelmetProvider + Toaster.
-    // Expliziter path: "/" stellt sicher, dass AppRoot IMMER im Render-Tree
-    // ist und alle Kind-Komponenten Zugriff auf AuthContext haben.
     path: "/",
     Component: AppRoot,
+    HydrateFallback,
     children: [
 
       // ── Login ──────────────────────────────────────────────────────────────
@@ -103,12 +104,10 @@ export const router = createBrowserRouter([
       },
 
       // ── Public Site ────────────────────────────────────────────────────────
-      // Pathlose Layout-Route: rendert fuer alle oeffentlichen Pfade
       {
         Component: RootLayout,
         children: [
-          { index: true,            Component: Home          },
-          // Nav-linked and content pages go through VisibilityRoute
+          { index: true,               Component: Home          },
           {
             Component: VisibilityRoute,
             children: [
@@ -130,11 +129,10 @@ export const router = createBrowserRouter([
               { path: "presse",         Component: Presse        },
             ],
           },
-          // Legal pages are always visible
-          { path: "impressum",      Component: Impressum     },
-          { path: "datenschutz",    Component: Datenschutz   },
-          { path: "agb",            Component: AGB           },
-          { path: "*",              Component: NotFound      },
+          { path: "impressum",          Component: Impressum     },
+          { path: "datenschutz",        Component: Datenschutz   },
+          { path: "agb",                Component: AGB           },
+          { path: "*",                  Component: NotFound      },
         ],
       },
 
@@ -150,25 +148,28 @@ export const router = createBrowserRouter([
               { path: "leads",                  Component: AdminLeads       },
               { path: "mitglieder",             Component: AdminMembers     },
               { path: "finanzen",               Component: AdminFinances    },
-              { path: "audit",                  Component: AdminAudit       },
               { path: "kurse",                  Component: AdminKurse       },
               { path: "buchungen",              Component: AdminBuchungen   },
               { path: "seiten",                 Component: AdminSeiten      },
               { path: "seiten/edit/:slug",      Component: PageEditor       },
               { path: "einstellungen",          Component: AdminSettings    },
               { path: "antraege",               Component: AdminAntraege    },
-              { path: "diagnostics",            Component: AdminDiagnostics },
               { path: "team",                   Component: AdminTeam        },
-              { path: "integrations",           Component: AdminIntegrations },
               { path: "tarife",                 Component: AdminTarife      },
               { path: "presse",                 Component: AdminPresse      },
               { path: "reviews",                Component: AdminReviews     },
-              { path: "karriere",               Component: AdminKarriere    },
-              { path: "bewerber",               Component: AdminBewerber    },
+              { path: "karriere",               Component: AdminKarriereHub },
+              { path: "bewerber",               loader: () => redirect("/admin/karriere?tab=bewerber"), Component: NullComponent },
               { path: "einsatzplan",            Component: AdminEinsatzplan },
               { path: "abwesenheiten",          Component: AdminAbwesenheiten },
-              { path: "coaching",                Component: AdminCoaching      },
-              { path: "magazin",                 Component: AdminMagazin       },
+              { path: "coaching",               Component: AdminCoaching    },
+              { path: "magazin",                Component: AdminMagazin     },
+              // ── System Hub (vereint System-Check, Integrationen, Audit) ──
+              { path: "system",                 Component: AdminSystemHub   },
+              // ── Legacy URL-Redirects (loader-basiert, kein Render) ────────
+              { path: "diagnostics",  loader: () => redirect("/admin/system?tab=systemcheck"),   Component: NullComponent },
+              { path: "integrations", loader: () => redirect("/admin/system?tab=integrationen"), Component: NullComponent },
+              { path: "audit",        loader: () => redirect("/admin/system?tab=audit"),         Component: NullComponent },
             ],
           },
         ],
@@ -182,13 +183,13 @@ export const router = createBrowserRouter([
           {
             Component: MemberLayout,
             children: [
-              { index: true,         Component: MemberDashboard  },
-              { path: "kurse",       Component: MemberKurse      },
-              { path: "buchungen",   Component: MemberBuchungen  },
-              { path: "tracking",    Component: MemberTracking   },
-              { path: "profil",      Component: MemberProfil     },
-              { path: "coaching",    Component: MemberCoaching   },
-              { path: "vertrag",     Component: MemberVertrag    },
+              { index: true,        Component: MemberDashboard },
+              { path: "kurse",      Component: MemberKurse     },
+              { path: "buchungen",  Component: MemberBuchungen },
+              { path: "tracking",   Component: MemberTracking  },
+              { path: "profil",     Component: MemberProfil    },
+              { path: "coaching",   Component: MemberCoaching  },
+              { path: "vertrag",    Component: MemberVertrag   },
             ],
           },
         ],

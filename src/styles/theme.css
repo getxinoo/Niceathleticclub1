@@ -171,14 +171,9 @@
   html {
     font-size: var(--font-size);
     scroll-behavior: smooth;
-    /*
-     * position: relative is required by Motion v12's useScroll(). When
-     * useScroll({ target }) is called without an explicit container, Motion
-     * resolves document.documentElement as the scroll container and checks
-     * that it has a non-static position. Without this, the dev-mode warning
-     * "Please ensure that the container has a non-static position…" fires.
-     */
     position: relative;
+    /* Force dark colour-scheme so native browser UI (select popover, date picker, scrollbar) renders dark */
+    color-scheme: dark;
   }
 
   body {
@@ -188,6 +183,29 @@
     position: relative;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Global select / option dark override ─────────────────────────────────
+   * Native <select> dropdowns inherit OS styling (white bg on macOS/Windows).
+   * Setting color-scheme: dark on the element forces the browser popup to use
+   * dark colours. The background/color props cover Chromium; Firefox respects
+   * appearance: none + our custom styling.
+   * ─────────────────────────────────────────────────────────────────────── */
+  select {
+    color-scheme: dark;
+    background-color: var(--surface-2);
+    color: var(--foreground);
+  }
+
+  option,
+  optgroup {
+    background-color: var(--surface-2);
+    color: var(--foreground);
+  }
+
+  /* Disabled option */
+  option:disabled {
+    color: rgba(255, 255, 255, 0.3);
   }
 
   h1 {

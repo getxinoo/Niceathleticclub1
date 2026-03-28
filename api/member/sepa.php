@@ -3,19 +3,19 @@
  * api/member/sepa.php – IBAN Self-Service fuer Mitglieder
  * ─────────────────────────────────────────────────────────────────────────────
  * GET  /api/member/sepa.php                    → SEPA-Status + maskierte IBAN
- * POST /api/member/sepa.php?action=update_iban → Neue IBAN speichern
+ * POST /api/member/sepa.php?action=update_iban → Neue IBAN & neues Mandat speichern
  *
  * Tabellen-Voraussetzungen:
- *   sepa_mandates  (id, member_id, mandate_reference, iban_encrypted, bic,
- *                   account_holder, signed_at, status, created_at, revoked_at)
- *   members        (id, first_name, last_name, iban, sepa_mandate_id,
- *                   cancellation_limit_hours)
- *   audit_logs     (user_id, action, entity_type, entity_id, details JSON)
+ * sepa_mandates  (id, member_id, mandate_reference, iban_encrypted, bic,
+ * account_holder, signed_at, status, created_at, revoked_at)
+ * members        (id, first_name, last_name, iban, sepa_mandate_id,
+ * cancellation_limit_hours)
+ * audit_logs     (user_id, action, entity_type, entity_id, details JSON)
  *
  * Sicherheits-Hinweise:
- *   - IBAN wird in der DB AES-256 verschluesselt gespeichert (sepa_mandates.iban_encrypted)
- *   - Fuer die maskierte Anzeige wird nur members.iban (Klartext, letzte 4 Zeichen) genutzt
- *   - In Produktion: AES-Key in config.php als Konstante definieren!
+ * - IBAN wird in der DB AES-256 verschluesselt gespeichert (sepa_mandates.iban_encrypted)
+ * - Fuer die maskierte Anzeige wird nur members.iban (Klartext, letzte 4 Zeichen) genutzt
+ * - In Produktion: AES-Key in config.php als Konstante definieren!
  */
 declare(strict_types=1);
 require_once '../config.php';
@@ -137,14 +137,14 @@ if ($method === 'GET' && !$action) {
 
         // Naechstes Einzugsdatum berechnen (immer 1. des Folgemonats)
         $next_collection = null;
-        if ($row['mandate_status'] === 'active') {
+        if (($row['mandate_status'] ?? '') === 'active') {
             $next_month = new \DateTime('first day of next month');
             $next_collection = $next_month->format('Y-m-d');
         }
 
         // Letzte erfolgreiche Transaktion als letztes Einzugsdatum
         $last_collection = null;
-        if ($row['mandate_id']) {
+        if (!empty($row['mandate_id'])) {
             $txStmt = $db->prepare(
                 "SELECT processed_at FROM transactions
                  WHERE mandate_id = ? AND status = 'success'
@@ -176,18 +176,24 @@ if ($method === 'GET' && !$action) {
 
 
 // =============================================================================
-// POST ?action=update_iban – Neue IBAN speichern
+// POST ?action=update_iban – Neue IBAN & Neues Mandat speichern
 // =============================================================================
 if ($method === 'POST' && $action === 'update_iban') {
     $body = get_body();
     $new_iban = trim($body['iban'] ?? '');
+    $new_bic  = trim($body['bic'] ?? '');
+    $consent  = $body['consent'] ?? false; // Die Checkbox aus dem Frontend
 
     if (empty($new_iban)) {
         json_error('IBAN ist ein Pflichtfeld.', 400);
     }
+    if (!$consent) {
+        json_error('Die rechtliche SEPA-Zustimmung ist zwingend erforderlich.', 400);
+    }
 
     // Leerzeichen entfernen und uppercase
     $new_iban_clean = strtoupper(str_replace(' ', '', $new_iban));
+    $new_bic_clean  = strtoupper(str_replace(' ', '', $new_bic));
 
     if (!validate_iban($new_iban_clean)) {
         json_error('Ungueltige IBAN. Bitte pruefe das Format (z.B. DE89 3704 0044 0532 0130 00).', 400);
@@ -196,45 +202,60 @@ if ($method === 'POST' && $action === 'update_iban') {
     try {
         $db->beginTransaction();
 
-        // 1. IBAN im Klartext in members speichern (fuer maskierte Anzeige)
-        $db->prepare(
-            "UPDATE members SET iban = ? WHERE id = ?"
-        )->execute([$new_iban_clean, $member_id]);
+        // 1. Altes aktives Mandat finden und widerrufen (revoked)
+        $oldMandateStmt = $db->prepare("SELECT sepa_mandate_id FROM members WHERE id = ?");
+        $oldMandateStmt->execute([$member_id]);
+        $old_mandate_id = $oldMandateStmt->fetchColumn();
 
-        // 2. Aktives SEPA-Mandat updaten (falls vorhanden)
-        $mandateStmt = $db->prepare(
-            "SELECT id FROM sepa_mandates
-             WHERE member_id = ? AND status = 'active'
-             ORDER BY created_at DESC LIMIT 1"
-        );
-        $mandateStmt->execute([$member_id]);
-        $mandate = $mandateStmt->fetch();
-
-        if ($mandate) {
-            // IBAN verschluesselt im Mandat aktualisieren
-            $encrypted = encrypt_iban($new_iban_clean);
-            $db->prepare(
-                "UPDATE sepa_mandates SET iban_encrypted = ? WHERE id = ?"
-            )->execute([$encrypted, $mandate['id']]);
+        if ($old_mandate_id) {
+            $db->prepare("UPDATE sepa_mandates SET status = 'revoked', revoked_at = NOW() WHERE id = ?")
+               ->execute([$old_mandate_id]);
         }
 
-        // 3. Audit-Log (DSGVO: keine vollstaendige IBAN loggen!)
-        log_audit_sepa('IBAN_UPDATE', (string) $member_id, [
-            'iban_masked' => mask_iban($new_iban_clean),
-            'had_mandate' => $mandate ? true : false,
+        // 2. Neue eindeutige Mandatsreferenz generieren (z.B. NICE-MEM123-202603A1B2)
+        $mandate_ref = 'NICE-MEM' . $member_id . '-' . date('Ym') . strtoupper(bin2hex(random_bytes(2)));
+        
+        // IBAN sicher verschluesseln
+        $encrypted_iban = encrypt_iban($new_iban_clean);
+
+        // 3. Komplett NEUES Mandat in die Datenbank schreiben
+        $insertStmt = $db->prepare(
+            "INSERT INTO sepa_mandates 
+             (member_id, mandate_reference, iban_encrypted, bic, signed_at, status, created_at) 
+             VALUES (?, ?, ?, ?, NOW(), 'active', NOW())"
+        );
+        $insertStmt->execute([
+            $member_id, 
+            $mandate_ref, 
+            $encrypted_iban, 
+            $new_bic_clean
+        ]);
+        $new_mandate_id = $db->lastInsertId();
+
+        // 4. Member updaten (Neue Mandats-ID verknüpfen + Klartext-IBAN fuer die Maske)
+        $db->prepare(
+            "UPDATE members SET iban = ?, sepa_mandate_id = ? WHERE id = ?"
+        )->execute([$new_iban_clean, $new_mandate_id, $member_id]);
+
+        // 5. DSGVO-konformes Audit-Log (Mit Hinweis auf Mandatswechsel)
+        log_audit_sepa('SEPA_MANDATE_CREATED', (string) $member_id, [
+            'mandate_reference'   => $mandate_ref,
+            'iban_masked'         => mask_iban($new_iban_clean),
+            'old_mandate_revoked' => $old_mandate_id ? true : false,
         ]);
 
         $db->commit();
 
         json_success([
             'success'     => true,
-            'message'     => 'IBAN erfolgreich aktualisiert.',
+            'message'     => 'Neues SEPA-Mandat erfolgreich erteilt.',
+            'mandate_ref' => $mandate_ref,
             'iban_masked' => mask_iban($new_iban_clean),
         ]);
 
     } catch (\Exception $e) {
         $db->rollBack();
-        json_error('IBAN konnte nicht aktualisiert werden: ' . $e->getMessage(), 500);
+        json_error('Mandat konnte nicht gespeichert werden: ' . $e->getMessage(), 500);
     }
 }
 

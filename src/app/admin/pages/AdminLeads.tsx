@@ -904,7 +904,7 @@ export default function AdminLeads() {
       </div>
 
       {/* ── KPI-Karten (identisches Layout wie AdminMembers) ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px" }}>
         {[
           { label: "Gesamt",    value: stats.total,        color: "rgba(255,255,255,0.7)" },
           { label: "Neu",       value: stats.neu,          color: "#60a5fa"               },

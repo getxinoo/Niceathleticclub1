@@ -31,6 +31,9 @@ import {
   Repeat2,
   BookOpen,
   BarChart2,
+  AlertTriangle,
+  CheckCircle2,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { useAuth } from "../../context/AuthContext";
@@ -38,14 +41,24 @@ import { CommandPalette, useAdminShortcuts } from "../../components/ui/CommandPa
 import { RoleBadge } from "../../components/ui/RoleBadge";
 import { DevMockWarning } from "../../components/ui/AccessDenied";
 import { P, type PermissionKey } from "../../../lib/permissions";
+import {
+  SystemCheckProvider,
+  useSystemCheck,
+} from "../context/SystemCheckContext";
+import {
+  KarriereCountProvider,
+  useKarriereCount,
+} from "../context/KarriereCountContext";
 
 // ── Nav item type ─────────────────────────────────────────────────────────────
 interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  exact?: boolean;
+  label:      string;
+  href:       string;
+  icon:       React.ElementType;
+  exact?:     boolean;
   permission?: PermissionKey;
+  /** Which live badge to render next to this item */
+  badgeKey?:  "systemcheck" | "karriere";
 }
 
 // ── Grouped Sidebar Navigation – 5 Gruppen nach md-Spec ──────────────────────
@@ -71,21 +84,18 @@ const NAV_GROUPS: { label: string; icon: React.ElementType; items: NavItem[] }[]
     label: "Studio Operations",
     icon: Dumbbell,
     items: [
-      { label: "Kurse",       href: "/admin/kurse",      icon: Dumbbell,       permission: P.COURSES_READ },
-      { label: "Buchungen",   href: "/admin/buchungen",  icon: CalendarCheck2, permission: P.BOOKINGS_READ },
+      { label: "Kurse & Buchungen", href: "/admin/kurse",      icon: Dumbbell,       permission: P.COURSES_READ },
       { label: "Coaching",    href: "/admin/coaching",   icon: MessageSquare,  permission: P.COACHING_READ },
       { label: "Bewertungen", href: "/admin/reviews",    icon: Star,           permission: P.CMS_MANAGE },
-      { label: "System-Check",href: "/admin/diagnostics",icon: Server,         permission: P.DIAGNOSTICS_VIEW },
     ],
   },
   {
     label: "HR & Personal",
     icon: Briefcase,
     items: [
-      { label: "Karriere",         href: "/admin/karriere",      icon: Briefcase,   permission: P.HR_READ },
-      { label: "Bewerber",         href: "/admin/bewerber",      icon: UserPlus,    permission: P.HR_WRITE },
-      { label: "Einsatzplan",      href: "/admin/einsatzplan",   icon: CalendarDays, permission: P.SHIFTS_READ },
-      { label: "Abwesenheiten",    href: "/admin/abwesenheiten", icon: TreePalm,    permission: P.ABSENCES_READ },
+      { label: "Karriere",      href: "/admin/karriere",      icon: Briefcase,    permission: P.HR_READ, badgeKey: "karriere" },
+      { label: "Einsatzplan",   href: "/admin/einsatzplan",   icon: CalendarDays, permission: P.SHIFTS_READ },
+      { label: "Abwesenheiten", href: "/admin/abwesenheiten", icon: TreePalm,     permission: P.ABSENCES_READ },
     ],
   },
   {
@@ -104,8 +114,7 @@ const NAV_GROUPS: { label: string; icon: React.ElementType; items: NavItem[] }[]
       { label: "Presse",        href: "/admin/presse",        icon: Newspaper,   permission: P.CMS_MANAGE },
       { label: "Magazin",       href: "/admin/magazin",       icon: BookOpen,    permission: P.CMS_MANAGE },
       { label: "Einstellungen", href: "/admin/einstellungen", icon: Settings,    permission: P.SETTINGS_MANAGE },
-      { label: "Integrationen", href: "/admin/integrations",  icon: Cable,       permission: P.INTEGRATIONS_MANAGE },
-      { label: "Audit-Log",     href: "/admin/audit",         icon: ShieldAlert, permission: P.AUDIT_READ },
+      { label: "System & Tools",href: "/admin/system",        icon: Server,      permission: P.DIAGNOSTICS_VIEW, badgeKey: "systemcheck" },
     ],
   },
 ];
@@ -114,6 +123,122 @@ const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 const SIDEBAR_W = 256;
 const HEADER_H  = 64;
+
+// ── Karriere Badge ────────────────────────────────────────────────────────────
+function KarriereBadge() {
+  const { newCount } = useKarriereCount();
+  if (newCount <= 0) return null;
+  return (
+    <span
+      className="ml-auto shrink-0"
+      style={{
+        background:   "#CA0C85",
+        color:        "white",
+        borderRadius: "999px",
+        fontFamily:   "var(--font-condensed)",
+        fontSize:     "9px",
+        fontWeight:   700,
+        letterSpacing:"0.04em",
+        padding:      "1px 6px",
+        lineHeight:   "14px",
+        minWidth:     "18px",
+        textAlign:    "center",
+        display:      "inline-block",
+        boxShadow:    "0 0 8px rgba(202,12,133,0.4)",
+      }}
+    >
+      {newCount}
+    </span>
+  );
+}
+
+// ── System Check Badge ────────────────────────────────────────────────────────
+function SystemBadge() {
+  const { result } = useSystemCheck();
+
+  if (result.status === "idle") return null;
+
+  if (result.status === "running") {
+    return (
+      <span
+        className="ml-auto shrink-0 animate-pulse"
+        style={{
+          width:        "6px",
+          height:       "6px",
+          borderRadius: "50%",
+          background:   "#6366F1",
+          display:      "inline-block",
+        }}
+      />
+    );
+  }
+
+  // done
+  if (result.errors > 0) {
+    return (
+      <span
+        className="ml-auto shrink-0 flex items-center gap-0.5"
+        style={{
+          background:   "rgba(239,68,68,0.14)",
+          border:       "1px solid rgba(239,68,68,0.3)",
+          borderRadius: "3px",
+          padding:      "1px 5px",
+          fontFamily:   "var(--font-condensed)",
+          fontSize:     "9px",
+          fontWeight:   700,
+          letterSpacing:"0.08em",
+          color:        "#ef4444",
+          lineHeight:   1,
+          minHeight:    "16px",
+          alignItems:   "center",
+        }}
+      >
+        <AlertTriangle size={8} style={{ flexShrink: 0 }} />
+        {result.errors}
+      </span>
+    );
+  }
+
+  if (result.auth > 0) {
+    return (
+      <span
+        className="ml-auto shrink-0 flex items-center gap-0.5"
+        style={{
+          background:   "rgba(255,193,7,0.12)",
+          border:       "1px solid rgba(255,193,7,0.28)",
+          borderRadius: "3px",
+          padding:      "1px 5px",
+          fontFamily:   "var(--font-condensed)",
+          fontSize:     "9px",
+          fontWeight:   700,
+          letterSpacing:"0.08em",
+          color:        "#FFC107",
+          lineHeight:   1,
+          minHeight:    "16px",
+          alignItems:   "center",
+        }}
+      >
+        <KeyRound size={8} style={{ flexShrink: 0 }} />
+        {result.auth}
+      </span>
+    );
+  }
+
+  // All OK
+  return (
+    <span
+      className="ml-auto shrink-0"
+      style={{
+        width:        "6px",
+        height:       "6px",
+        borderRadius: "50%",
+        background:   "#22c55e",
+        display:      "inline-block",
+        boxShadow:    "0 0 5px rgba(34,197,94,0.5)",
+      }}
+    />
+  );
+}
 
 // ── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({
@@ -351,6 +476,13 @@ function Sidebar({
                           style={{ color: active ? "var(--brand)" : "inherit", flexShrink: 0 }}
                         />
                         {item.label}
+                        {/* Live badge based on badgeKey */}
+                        {item.badgeKey === "systemcheck" && !active && (
+                          <SystemBadge />
+                        )}
+                        {item.badgeKey === "karriere" && !active && (
+                          <KarriereBadge />
+                        )}
                         {active && (
                           <ChevronRight
                             size={11}
@@ -673,45 +805,49 @@ export function AdminLayout() {
   }, [location.pathname]);
 
   return (
-    <div style={{ background: "var(--surface-0)", minHeight: "100vh" }}>
-      <Sidebar
-        mobileOpen={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-      />
-
-      <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
-
-      <div
-        className="flex flex-col min-h-screen"
-        style={{ marginLeft: 0 }}
-      >
-        <style>{`
-          @media (min-width: 768px) {
-            .admin-main { margin-left: ${SIDEBAR_W}px; }
-          }
-        `}</style>
-
-        <div className="admin-main flex flex-col min-h-screen">
-          <AdminHeader
-            onMenuClick={() => setMobileOpen(true)}
-            onSearchClick={() => setCmdOpen(true)}
+    <SystemCheckProvider>
+      <KarriereCountProvider>
+        <div style={{ background: "var(--surface-0)", minHeight: "100vh" }}>
+          <Sidebar
+            mobileOpen={mobileOpen}
+            onClose={() => setMobileOpen(false)}
           />
 
-          <main className="flex-1 p-6">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={location.pathname}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
-          </main>
+          <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+
+          <div
+            className="flex flex-col min-h-screen"
+            style={{ marginLeft: 0 }}
+          >
+            <style>{`
+              @media (min-width: 768px) {
+                .admin-main { margin-left: ${SIDEBAR_W}px; }
+              }
+            `}</style>
+
+            <div className="admin-main flex flex-col min-h-screen">
+              <AdminHeader
+                onMenuClick={() => setMobileOpen(true)}
+                onSearchClick={() => setCmdOpen(true)}
+              />
+
+              <main className="flex-1 p-4 md:p-6 min-w-0 overflow-x-hidden">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div
+                    key={location.pathname}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <Outlet />
+                  </motion.div>
+                </AnimatePresence>
+              </main>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </KarriereCountProvider>
+    </SystemCheckProvider>
   );
 }

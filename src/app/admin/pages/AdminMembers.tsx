@@ -1429,7 +1429,7 @@ export default function AdminMembers() {
       </div>
 
       {/* KPI */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px" }}>
         {[
           { label: "Gesamt",      value: stats.total,   color: "rgba(255,255,255,0.7)" },
           { label: "Aktiv",       value: stats.active,  color: "#4ade80"               },

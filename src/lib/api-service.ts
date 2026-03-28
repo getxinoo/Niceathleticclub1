@@ -1081,11 +1081,13 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       // ── Admin Bookings CRUD ───────────────────────────────────────────────
-      if (ep === "/admin/bookings") {
+      if (ep === "/admin/bookings" || ep.startsWith("/admin/bookings?")) {
         if (method === "DELETE") return { success: true } as T;
         if (method === "PATCH") return { success: true } as T;
         return { success: true } as T;
       }
+      if (ep.startsWith("/admin/bookings/notify")) return { success: true, queued: true } as T;
+      if (ep === "/admin/bookings/link")            return { success: true, linked: true } as T;
 
       // ── Öffentliche Buchungen ─────────────────────────────────────────────
       if (ep === "/bookings") {
@@ -1742,6 +1744,52 @@ export const api = {
         request(`/admin/finances?action=update_inkasso&id=${id}`, { method: "POST", body: JSON.stringify(data) }),
     },
 
+    // ── SEPA Self-Service Admin Orchestration ────────────────────────────────
+    sepa: {
+      /** GET – SEPA-Token-Status eines Mitglieds abfragen */
+      status: (memberId: string) =>
+        request<{
+          member_id: number;
+          member_name: string;
+          member_email: string;
+          iban_masked: string | null;
+          has_active_token: boolean;
+          token_expired: boolean;
+          token_expires_at: string | null;
+          last_link_sent_at: string | null;
+          rate_limit_remaining_s: number | null;
+          mandate: { id: number; mandate_reference: string; status: string; bic: string; signed_at: string } | null;
+        }>(`/admin/request_sepa?member_id=${memberId}`),
+
+      /** POST action=send_link – SEPA-Link per E-Mail senden (Rate-Limit: 1/10 min) */
+      sendLink: (memberId: string) =>
+        request<{ success: boolean; message: string; token_expires: string; member_id: number }>(
+          "/admin/request_sepa?action=send_link",
+          { method: "POST", body: JSON.stringify({ member_id: memberId }) }
+        ),
+
+      /** POST action=update_sepa – Admin hinterlegt Bankdaten direkt (AES-256, Audit-Log) */
+      updateDirect: (payload: {
+        member_id: string;
+        iban: string;
+        bic: string;
+        account_holder?: string;
+        mandate_confirmed: boolean;
+      }) =>
+        request<{
+          success: boolean;
+          message: string;
+          iban_masked: string;
+          bic: string;
+          mandate_reference: string;
+          mandate_id: number;
+          status: string;
+        }>("/admin/request_sepa?action=update_sepa", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        }),
+    },
+
     audit: {
       list: (params?: {
         limit?: number; offset?: number;
@@ -1861,6 +1909,21 @@ export const api = {
         request(`/admin/bookings?id=${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
       delete: (id: string) =>
         request(`/admin/bookings?id=${id}`, { method: "DELETE" }),
+      /** Buchung stornieren, optional mit E-Mail-Benachrichtigung */
+      cancel: (id: string, options: { notify: boolean; message?: string }) =>
+        request(`/admin/bookings?id=${id}`, { method: "PATCH", body: JSON.stringify({ status: "cancelled", ...options }) }),
+      /** Benachrichtigung an Buchenden senden (E-Mail oder In-App) */
+      notify: (id: string, payload: { channel: "email" | "inapp"; message: string }) =>
+        request(`/admin/bookings/notify?id=${id}`, { method: "POST", body: JSON.stringify(payload) }),
+      /** Alle Buchungen einer Gast-E-Mail-Adresse laden */
+      listByEmail: (email: string) =>
+        request<Booking[]>(`/admin/bookings?email=${encodeURIComponent(email)}`),
+      /** Gast-Buchungen einer E-Mail mit einem Mitgliedsprofil verknüpfen */
+      linkToMember: (guestEmail: string, memberId: string) =>
+        request("/admin/bookings/link", { method: "POST", body: JSON.stringify({ guest_email: guestEmail, member_id: memberId }) }),
+      /** DSGVO: Personenbezogene Gast-Daten pseudonymisieren */
+      pseudonymize: (id: string) =>
+        request(`/admin/bookings?id=${id}`, { method: "PATCH", body: JSON.stringify({ action: "pseudonymize" }) }),
     },
 
     // ── REVIEWS (Google-Rezensionen) Admin CRUD ──────────────────────────────

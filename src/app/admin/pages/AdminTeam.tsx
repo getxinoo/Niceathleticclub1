@@ -1136,6 +1136,8 @@ export default function AdminTeam() {
 
       {/* ── Table ── */}
       <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "6px", overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: "640px" }}>
         {/* Header */}
         <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 160px 90px 160px 44px", gap: "8px", padding: "10px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
           {["MA-Nr.", "Mitarbeiter", "Rolle", "Status", "Verknuepftes Mitglied", ""].map((h) => (
@@ -1298,6 +1300,8 @@ export default function AdminTeam() {
             );
           })
         )}
+        </div>{/* /minWidth */}
+        </div>{/* /overflowX */}
       </div>
 
       {/* ── Create / Edit Sheet ── */}

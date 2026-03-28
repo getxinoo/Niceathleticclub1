@@ -19,6 +19,7 @@ import {
   BookOpen, ScrollText, Wallet,
 } from "lucide-react";
 import { BASE_URL, setMockFallbackEnabled } from "../../../lib/api-service";
+import { useSystemCheck } from "../context/SystemCheckContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -165,7 +166,7 @@ const CHECKS: DiagCheck[] = [
     endpoint: "/admin/me.php", icon: CircleUser, requiresAuth: true, group: "auth",
   },
 
-  // ── Public ─────────────────────────────────────────────────────────────────
+  // ── Public ───────────────────────────────────────���─────────────────────────
   {
     id: "public-team", name: "Team (Public)",
     description: "Öffentliche Team-Seite – sichtbare Teammitglieder.",
@@ -587,6 +588,7 @@ export default function AdminDiagnostics() {
   const [startedAt, setStartedAt] = useState<Date | null>(null);
   const [authStatus, setAuthStatus] = useState<"idle" | "ok" | "failed">("idle");
   const realTokenRef = useRef<string | null>(null);
+  const sysCheck = useSystemCheck();
 
   const groupedChecks = useMemo(() => {
     return GROUPS.map(g => ({ group: g, checks: CHECKS.filter(c => c.group === g.id) })).filter(g => g.checks.length > 0);
@@ -759,9 +761,24 @@ export default function AdminDiagnostics() {
     }
     setIsRunning(false);
     setHasRun(true);
-  }, [isRunning, updateResult]);
+    // ── Report to SystemCheckContext (sidebar badge) ──────────────────────────
+    setResults((prev) => {
+      const ok    = prev.filter(r => r.status === "ok").length;
+      const errors= prev.filter(r => r.status === "error").length;
+      const auth  = prev.filter(r => r.status === "auth-missing").length;
+      sysCheck.setCompleted({ ok, errors, auth, total: CHECKS.length });
+      return prev;
+    });
+  }, [isRunning, updateResult, sysCheck]);
 
-  const reset = () => { setResults([]); setHasRun(false); setStartedAt(null); setAuthStatus("idle"); realTokenRef.current = null; };
+  const reset = () => {
+    setResults([]);
+    setHasRun(false);
+    setStartedAt(null);
+    setAuthStatus("idle");
+    realTokenRef.current = null;
+    sysCheck.reset();
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
