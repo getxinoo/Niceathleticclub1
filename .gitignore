@@ -7,6 +7,7 @@ dist-ssr/
 
 # Local env files
 .env
+.env.*
 .env.local
 .env.*.local
 
@@ -17,3 +18,17 @@ npm-debug.log*
 
 # Vite
 .vite/
+
+# ── Security: secrets & data must never be committed (T1 remediation) ────────
+# NOTE: rules for files that are currently still TRACKED (api/config.php,
+# sql-dump.md) take effect only after the approved untracking / history-purge
+# step — see SECURITY_REMEDIATION_PLAN.md. config.example.php stays tracked.
+api/config.php
+api/config.local.php
+api/config.production.php
+*.sql
+sql-dump.md
+*_dump*
+backups/
+deploy-package*
+UNSAFE_DO_NOT_DEPLOY*
