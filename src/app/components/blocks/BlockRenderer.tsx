@@ -22,6 +22,14 @@ import {
 import { MEMBERSHIP_PLANS } from "../../../data/classes";
 import { MOCK_REVIEWS } from "../../../data/reviews";
 
+// ── Live Pricing-Daten + echte Section-Komponente ────────────────────────────
+// PricingAddonsSection ist eine reine Präsentations-Komponente ohne Bezug zu
+// Studio.tsx/Team.tsx (siehe Warnhinweis oben) – ihr Import erzeugt daher
+// keinen Zirkelbezug. Preise.tsx (Live-Frontend) verwendet exakt dieselbe
+// Komponente + denselben Hook.
+import { usePricingData } from "../../../lib/use-pricing";
+import { PricingAddonsSection } from "../pricing";
+
 // ── Figma-Assets ──────────────────────────────────────────────────────────────
 import pillarStrengthImg from "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png";
 import pillarCrossfitImg from "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png";
@@ -257,8 +265,50 @@ function PricingBlock({ d }: { d: PricingBlockData }) {
 function PricingCardsBlock({ d }: { d: PricingCardsBlockData }) {
   return <section style={{ background: S, padding: P96 }}><div style={{ ...W1100, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={48} />}<ApiBox label="Preis-Karten" /></div></section>;
 }
+// Renders the SAME PricingAddonsSection + usePricingData("preise") that the
+// public /preise page uses (see app/pages/Preise.tsx). The block's own
+// `heading`/`subtitle` fields are not applied here — PricingAddonsSection has
+// a fixed heading/subtitle by design, exactly as it does on the live page
+// today (Preise.tsx never reads a "pricing-addons" block for this section).
 function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
-  return <section style={{ background: S, padding: P96 }}><div style={{ ...W1100, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={d.subtitle ? 12 : 48} />}{d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: "14px", marginBottom: 32 }}>{d.subtitle}</p>}<ApiBox label="Addons" /></div></section>;
+  const { data, loading } = usePricingData("preise");
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", padding: "64px 24px" }}>
+        <div
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            border: "2px solid rgba(202,12,133,0.3)",
+            borderTopColor: "var(--brand)",
+            animation: "spin 0.7s linear infinite",
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {(d.heading || d.subtitle) && (
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.25)",
+            padding: "10px 24px 0",
+          }}
+        >
+          Hinweis: Überschrift/Unterzeile werden hier nicht verwendet – dieser Bereich hat ein festes Design auf der Live-Seite.
+        </p>
+      )}
+      <PricingAddonsSection addons={data?.addons ?? []} />
+    </div>
+  );
 }
 function PricingCompareBlock({ d }: { d: PricingCompareBlockData }) {
   return <section style={{ background: S, padding: P96 }}><div style={{ ...W1100, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={48} />}<ApiBox label="Tarifvergleich" /></div></section>;
