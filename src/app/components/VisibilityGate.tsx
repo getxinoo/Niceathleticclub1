@@ -38,12 +38,20 @@ interface VisibilityGateProps {
 }
 
 export function VisibilityGate({ path, children }: VisibilityGateProps) {
-  const { isVisible } = usePageVisibility();
+  const { isVisible, visibility, loaded } = usePageVisibility();
   const { user } = useAuth();
   const slug = PATH_TO_SLUG[path];
 
   // No slug mapping = always visible (e.g. home)
   if (!slug) return <>{children}</>;
+
+  // Solange die Sichtbarkeits-Daten noch nicht geladen sind UND wir für diesen
+  // Slug noch keinen (auch nur gecachten) Stand kennen, NICHTS rendern – sonst
+  // würde ein Draft kurz als "sichtbar" aufblitzen (Default ist sonst true).
+  const hasKnownState = slug in visibility;
+  if (!loaded && !hasKnownState) {
+    return null;
+  }
 
   const visible = isVisible(slug);
   const isAdmin = user?.role === "admin" || user?.role === "owner" || user?.role === "manager";

@@ -68,7 +68,7 @@ import { reseedPage } from "../../../lib/page-sync";
 import { BlockPreview } from "../components/BlockPreview";
 import { BlockSettingsSheet } from "../components/BlockSettingsSheet";
 import { cn } from "../../../lib/utils";
-import { usePageVisibility, SLUG_TO_NAV_HREF } from "../../context/PageVisibilityContext";
+import { usePageVisibility } from "../../context/PageVisibilityContext";
 
 // ── DnD item type ────────────────────────────────────────────────────────────
 const DND_TYPE = "PAGE_BLOCK";
@@ -504,7 +504,6 @@ export default function PageEditor() {
   const [settingsOpen, setSettingsOpen]   = useState(false);
   const [pickerOpen, setPickerOpen]       = useState(false);
   const [previewMode, setPreviewMode]     = useState<"desktop" | "mobile">("desktop");
-  const [published, setPublished]         = useState(false);
   const [saving, setSaving]              = useState(false);
   const [saveSuccess, setSaveSuccess]     = useState(false);
 
@@ -558,9 +557,10 @@ export default function PageEditor() {
     return () => window.removeEventListener("keydown", handler);
   }, [undo, redo]);
 
+  // pages.status ist die einzige Quelle für Sichtbarkeit – "Veröffentlicht/Entwurf"
+  // ist der einzige öffentliche Sichtbarkeitsschalter (siehe Toolbar unten).
   const { isVisible, setVisible } = usePageVisibility();
-  const pageVisible = isVisible(slug);
-  const hasNavLink = !!SLUG_TO_NAV_HREF[slug];
+  const published = isVisible(slug);
 
   // Load initial blocks: API → localStorage → seed
   useEffect(() => {
@@ -594,8 +594,10 @@ export default function PageEditor() {
     setCanUndo(false);
     setCanRedo(false);
 
-    // Background: try PHP API to get server-saved blocks (production)
-    api.pages.getBlocks(slug)
+    // Background: try PHP API to get server-saved blocks (production).
+    // admin=1 damit auch Draft-Seiten im Editor geladen werden können –
+    // published/draft steuert weiterhin ausschließlich pages.status.
+    api.pages.getBlocks(slug, { admin: true })
       .then((res) => {
         if (cancelled) return;
         if (Array.isArray(res?.blocks) && res.blocks.length > 0) {
@@ -605,7 +607,6 @@ export default function PageEditor() {
           _setBlocks(serverBlocks);
           setCanUndo(false);
           setCanRedo(false);
-          if (res.published !== undefined) setPublished(res.published);
         }
       })
       .catch(() => { /* already showing localStorage/seed */ });
@@ -644,6 +645,18 @@ export default function PageEditor() {
   const handleSave = async () => {
     // Ref synchron halten (für Ctrl+S Keyboard-Shortcut)
     handleSaveRef.current = handleSave;
+
+    // Leeres blocks[] darf nur nach bewusster Bestätigung gespeichert werden –
+    // kein automatisches Überschreiben bestehender Inhalte.
+    let allowEmptyBlocks = false;
+    if (blocks.length === 0) {
+      const confirmed = window.confirm(
+        `Seite "${meta.title}" wird ohne Inhalte (0 Blöcke) gespeichert. Fortfahren?`
+      );
+      if (!confirmed) return;
+      allowEmptyBlocks = true;
+    }
+
     setSaving(true);
 
     // 1. SEO in localStorage persistieren
@@ -657,9 +670,13 @@ export default function PageEditor() {
 
     // 3. Async zur PHP-API (Best-Effort – schlägt im Offline-Modus still fehl)
     try {
+      // "title"/"meta_description" werden hier bewusst NICHT gesendet: der SEO-Tab
+      // ist aktuell nur localStorage-gestützt (nie vom Server geladen) – ein Save
+      // würde sonst einen echten DB-Titel/Meta-Text stillschweigend überschreiben.
       await api.pages.saveBlocks(slug, {
         blocks: blocks as import("../../../lib/api-service").SerializedBlock[],
-        published,
+        status: published ? "published" : "draft",
+        allow_empty_blocks: allowEmptyBlocks,
       });
     } catch (err) {
       console.info("[PageEditor] PHP-API nicht erreichbar – in localStorage gespeichert.", err);
@@ -758,42 +775,6 @@ export default function PageEditor() {
             </button>
           </div>
 
-          {/* Visibility toggle */}
-          <button
-            onClick={() => setVisible(slug, !pageVisible)}
-            className="flex items-center gap-2 px-3 cursor-pointer transition-all duration-200"
-            title={pageVisible ? "Seite ausblenden (wird auch aus der Navigation entfernt)" : "Seite einblenden"}
-            style={{
-              background: pageVisible ? "rgba(40,200,64,0.08)" : "rgba(239,68,68,0.08)",
-              border: `1px solid ${pageVisible ? "rgba(40,200,64,0.2)" : "rgba(239,68,68,0.2)"}`,
-              color: pageVisible ? "rgba(40,200,64,0.8)" : "rgba(239,68,68,0.7)",
-              fontFamily: "var(--font-condensed)",
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              textTransform: "uppercase" as const,
-              minHeight: "34px",
-            }}
-          >
-            {/* Mini toggle track */}
-            <div style={{
-              width: 22, height: 12, borderRadius: 6, position: "relative",
-              background: pageVisible ? "rgba(40,200,64,0.3)" : "rgba(239,68,68,0.2)",
-              transition: "background 0.2s",
-            }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: "50%", position: "absolute", top: 2,
-                left: pageVisible ? 12 : 2,
-                background: pageVisible ? "#28c840" : "#ef4444",
-                transition: "left 0.2s, background 0.2s",
-              }} />
-            </div>
-            {pageVisible ? "Sichtbar" : "Ausgeblendet"}
-            {hasNavLink && !pageVisible && (
-              <span style={{ fontSize: 8, opacity: 0.6 }}>(Nav ausgeblendet)</span>
-            )}
-          </button>
-
           <div className="flex-1" />
 
           {/* Preview link */}
@@ -816,9 +797,9 @@ export default function PageEditor() {
             Vorschau
           </a>
 
-          {/* Publish toggle */}
+          {/* Publish toggle – der einzige öffentliche Sichtbarkeitsschalter (schreibt pages.status) */}
           <button
-            onClick={() => setPublished((v) => !v)}
+            onClick={() => setVisible(slug, !published)}
             className="flex items-center gap-2 px-3 cursor-pointer transition-all duration-200"
             style={{
               background: published ? "rgba(74,222,128,0.1)" : "rgba(255,255,255,0.04)",

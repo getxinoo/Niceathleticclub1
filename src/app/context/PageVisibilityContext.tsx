@@ -2,10 +2,18 @@
  * PageVisibilityContext
  * ─────────────────────────────────────────────────────────────────────────────
  * Verwaltet welche Seiten sichtbar (published) sind und welche Nav-Overrides
- * existieren. Sync mit API (api/admin/page-visibility.php) + localStorage-Fallback.
+ * existieren.
+ *
+ * WICHTIG – Single Source of Truth:
+ * - Sichtbarkeit kommt AUSSCHLIESSLICH aus `pages.status` (api.pages.list()).
+ *   status === "published" → sichtbar, status === "draft" → ausgeblendet.
+ *   Es gibt keine separate "page_visibility.visible"-Wahrheit mehr.
+ * - Nav-Overrides (customHref/customLabel) sind eine eigenständige, nicht
+ *   sicherheitsrelevante Funktion und bleiben über api.pageVisibility.
+ * - setVisible(slug, visible) schreibt direkt pages.status (published/draft).
  *
  * Logik:
- * - Jede Seite hat einen `visible`-Boolean (default: true)
+ * - Jede Seite hat einen `visible`-Boolean, abgeleitet aus ihrem CMS-Status
  * - Jede Nav-Item kann ein Override haben: { slug, customHref, customLabel }
  *   → Wenn eine Seite ausgeblendet ist aber ein Override existiert, bleibt
  *     der Nav-Punkt sichtbar und zeigt auf die Override-URL
@@ -137,50 +145,71 @@ export function PageVisibilityProvider({ children }: { children: ReactNode }) {
   const initialLoadDone = useRef(false);
 
   // ── Load from API on mount ──────────────────────────────────────────────
+  // Sichtbarkeit: pages.status ist die einzige Wahrheit (api.pages.list()).
+  // Nav-Overrides: separate, nicht sicherheitsrelevante Funktion (best effort).
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      let nextVisibility: Record<string, boolean> | null = null;
       try {
-        // Versuche zuerst den Admin-Endpoint (Auth), dann Public-Fallback
+        // strictRequest intern – ein echter Fehler darf NIE zu "alles sichtbar" führen.
+        const pages = await api.pages.list();
+        nextVisibility = {};
+        for (const p of pages) {
+          nextVisibility[p.slug] = p.status === "published";
+        }
+      } catch {
+        // Pages-Liste nicht ladbar → bestehenden (localStorage-)Stand behalten,
+        // NIEMALS stillschweigend auf "alles sichtbar" zurückfallen.
+      }
+
+      let nextNavOverrides: Record<string, NavOverride> | null = null;
+      try {
         let remote: Awaited<ReturnType<typeof api.pageVisibility.get>> | null = null;
         try {
           remote = await api.pageVisibility.get();
         } catch {
-          // Kein Auth / 401 → Public-Endpoint verwenden
           remote = await api.pageVisibility.getPublic();
         }
-        if (!cancelled && remote) {
-          const merged: PageVisibilityState = {
-            visibility: remote.visibility ?? {},
-            navOverrides: (remote.navOverrides ?? {}) as Record<string, NavOverride>,
-          };
-          setState(merged);
-          saveStateLocal(merged);
+        if (remote) {
+          nextNavOverrides = (remote.navOverrides ?? {}) as Record<string, NavOverride>;
         }
       } catch {
-        // API nicht erreichbar → localStorage-State behalten
-      } finally {
-        if (!cancelled) {
-          initialLoadDone.current = true;
-          setLoaded(true);
-        }
+        // Nav-Overrides nicht ladbar → bestehenden Stand behalten (unkritisch)
+      }
+
+      if (!cancelled) {
+        setState((prev) => {
+          const merged: PageVisibilityState = {
+            visibility: nextVisibility ?? prev.visibility,
+            navOverrides: nextNavOverrides ?? prev.navOverrides,
+          };
+          saveStateLocal(merged);
+          return merged;
+        });
+      }
+      if (!cancelled) {
+        initialLoadDone.current = true;
+        setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // ── Debounced save to API + localStorage on state change ────────────────
+  // ── Persist to localStorage on every change ──────────────────────────────
   useEffect(() => {
-    // Nicht speichern wenn der initiale Load noch nicht fertig ist
+    if (!initialLoadDone.current) return;
+    saveStateLocal(state);
+  }, [state]);
+
+  // ── Debounced save of Nav-Overrides only (Sichtbarkeit wird direkt in
+  //    setVisible() gegen pages.status geschrieben, nicht hier) ─────────────
+  useEffect(() => {
     if (!initialLoadDone.current) return;
 
-    saveStateLocal(state);
-
-    // Debounce API-Save um 800ms
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       api.pageVisibility.save({
-        visibility: state.visibility,
         navOverrides: state.navOverrides,
       }).catch(() => {
         // Silent fail – localStorage ist bereits aktualisiert
@@ -190,7 +219,7 @@ export function PageVisibilityProvider({ children }: { children: ReactNode }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [state]);
+  }, [state.navOverrides]);
 
   const isVisible = useCallback(
     (slug: string) => state.visibility[slug] !== false,
@@ -202,6 +231,10 @@ export function PageVisibilityProvider({ children }: { children: ReactNode }) {
       ...prev,
       visibility: { ...prev.visibility, [slug]: visible },
     }));
+    // pages.status ist die einzige Wahrheit – sofort (nicht debounced) schreiben.
+    api.pages.updateMeta(slug, { status: visible ? "published" : "draft" }).catch(() => {
+      // Best-effort; optimistischer lokaler State bleibt bestehen (Retry beim naechsten Load)
+    });
   }, []);
 
   const setNavOverride = useCallback(

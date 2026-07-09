@@ -724,7 +724,21 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
     // ── WRITE: Simulierte Erfolgsantworten ──────────────────────────────────
     if (isWrite) {
       notifyMockActive();
-      const parsed = body ? JSON.parse(body) : {};
+      // Body kann JSON oder URL-encoded (application/x-www-form-urlencoded) sein.
+      // member/tracking sendet z.B. "member_id=123&action=get" – kein JSON!
+      let parsed: Record<string, unknown> = {};
+      if (body) {
+        const trimmed = body.trimStart();
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          try { parsed = JSON.parse(body); } catch { parsed = {}; }
+        } else {
+          // URL-encoded → in Objekt umwandeln
+          try {
+            const params = new URLSearchParams(body);
+            params.forEach((v, k) => { parsed[k] = v; });
+          } catch { parsed = {}; }
+        }
+      }
 
       // POST/PATCH/DELETE → spezifische Handler zuerst, generischer DELETE am Ende
       const mockId = "mock-" + Date.now();
@@ -1150,7 +1164,8 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
-  silent = false
+  silent = false,
+  allowMockFallback = true
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   const token = tokenStore.get();
@@ -1168,8 +1183,8 @@ async function request<T>(
   try {
     res = await fetch(url, { ...options, headers });
   } catch {
-    // ── Netzwerkfehler: Mock-Fallback versuchen ──────────────────────────────
-    if (!_mockFallbackDisabled) {
+    // ── Netzwerkfehler: Mock-Fallback versuchen (nur wenn erlaubt) ───────────
+    if (allowMockFallback && !_mockFallbackDisabled) {
       const mock = await getMockFallback<T>(endpoint, options.method, typeof options.body === "string" ? options.body : undefined);
       if (mock !== null) return mock;
     }
@@ -1181,8 +1196,11 @@ async function request<T>(
   // ── Mock-Session: Server ist erreichbar, aber PHP-API fehlt ────────────────
   // Wenn wir mit einem Mock-Token arbeiten und der Server antwortet (z.B. 401/404/500
   // weil die PHP-Dateien nicht deployed sind), NICHT ausloggen, sondern Mock-Daten liefern.
+  // WICHTIG: Fuer sicherheitsrelevante Calls (z.B. Page-Visibility-Checks) wird
+  // allowMockFallback=false gesetzt – ein echtes 404 (z.B. Draft-Seite) darf dort
+  // NIE durch Mock-/Seed-Daten ersetzt werden.
   const isMockSession = tokenStore.isMock();
-  if ((isMockSession || res.status === 404) && !res.ok && !_mockFallbackDisabled) {
+  if (allowMockFallback && (isMockSession || res.status === 404) && !res.ok && !_mockFallbackDisabled) {
     const mock = await getMockFallback<T>(endpoint, options.method, typeof options.body === "string" ? options.body : undefined);
     if (mock !== null) {
       notifyMockActive();
@@ -1275,6 +1293,16 @@ async function request<T>(
   }
 
   return res.json() as Promise<T>;
+}
+
+/**
+ * strictRequest – wie request(), aber OHNE Mock-/Seed-Fallback.
+ * Für sicherheitsrelevante Reads (z.B. Page-Visibility/Status-Checks), bei denen
+ * ein echter 404/Netzwerkfehler NIEMALS durch Fake-"alles sichtbar"-Daten
+ * verdeckt werden darf – ein Draft muss wirklich 404 bleiben.
+ */
+function strictRequest<T>(endpoint: string, options: RequestInit = {}, silent = false): Promise<T> {
+  return request<T>(endpoint, options, silent, false);
 }
 
 // ── Domain Types ──────────────────────────────────────────────────────────────
@@ -2347,37 +2375,72 @@ export const api = {
   },
 
   // ── PAGES / SITEBUILDER ────────────────────────────────────────────────────
+  // pages.status ist die einzige Quelle fuer Sichtbarkeit (draft | published).
   pages: {
     /**
-     * Lädt die Block-Konfiguration einer Seite vom Backend.
-     * GET /pages.php?slug=<slug>
-     * Antwort: { blocks: SerializedBlock[], published: boolean }
+     * Lädt alle Seiten (Metadaten, kein Content) – Grundlage für die
+     * Sichtbarkeits-Map im PageVisibilityContext. Nutzt strictRequest, damit
+     * ein echter Server-Fehler NICHT stillschweigend zu "alles sichtbar" führt.
+     * GET /pages.php[?admin=1]
      */
-    getBlocks: (slug: string) =>
-      request<{ blocks: SerializedBlock[]; published: boolean }>(
-        `/pages?slug=${encodeURIComponent(slug)}`,
+    list: (opts?: { admin?: boolean }) =>
+      strictRequest<Array<{ slug: string; title: string; metaDescription: string; status: "draft" | "published"; updatedAt: string }>>(
+        opts?.admin ? "/pages?admin=1" : "/pages",
+        {},
+        true
+      ),
+
+    /**
+     * Lädt die Block-Konfiguration einer Seite vom Backend.
+     * GET /pages.php?slug=<slug>[&admin=1]
+     * Antwort: { blocks: SerializedBlock[], status: "draft"|"published", published: boolean }
+     */
+    getBlocks: (slug: string, opts?: { admin?: boolean }) =>
+      request<{ blocks: SerializedBlock[]; status?: "draft" | "published"; published: boolean }>(
+        `/pages?slug=${encodeURIComponent(slug)}${opts?.admin ? "&admin=1" : ""}`,
         {},
         true   // silent – Fallback in PageEditor selbst implementiert
       ),
 
     /**
-     * Speichert die Block-Konfiguration einer Seite.
-     * PUT /pages.php
-     * Body: { slug, blocks, published }
+     * Speichert die Block-Konfiguration (+ optional Meta) einer Seite.
+     * PUT /pages.php?slug=<slug>  (Slug immer in der Query – Body-Slug ist nur Fallback)
      */
-    saveBlocks: (slug: string, payload: { blocks: SerializedBlock[]; published: boolean }) =>
-      request<{ success: boolean; message?: string }>(
-        "/pages",
+    saveBlocks: (
+      slug: string,
+      payload: {
+        blocks: SerializedBlock[];
+        published?: boolean;
+        status?: "draft" | "published";
+        title?: string;
+        meta_description?: string;
+        /** Muss true sein, damit ein leeres blocks[] eine befuellte Seite ueberschreiben darf */
+        allow_empty_blocks?: boolean;
+      }
+    ) =>
+      request<{ slug: string; title: string; metaDescription: string; blocks: SerializedBlock[]; status: "draft" | "published"; published: boolean; updatedAt: string }>(
+        `/pages?slug=${encodeURIComponent(slug)}`,
         { method: "PUT", body: JSON.stringify({ slug, ...payload }) }
+      ),
+
+    /**
+     * Aktualisiert nur Meta-Felder (u.a. status) ohne Blocks anzufassen.
+     * PATCH /pages.php?slug=<slug>
+     */
+    updateMeta: (slug: string, payload: { title?: string; meta_description?: string; status?: "draft" | "published" }) =>
+      request<{ slug: string; title: string; metaDescription: string; status: "draft" | "published"; updatedAt: string }>(
+        `/pages?slug=${encodeURIComponent(slug)}`,
+        { method: "PATCH", body: JSON.stringify({ slug, ...payload }) }
       ),
   },
 
-  // ── PAGE VISIBILITY ────────────────────────────────────────────────────────
+  // ── PAGE VISIBILITY (Nav-Overrides) ────────────────────────────────────────
+  // WICHTIG: Nur noch für Nav-Overrides (customHref/customLabel) zuständig.
+  // Die Sichtbarkeit selbst kommt ausschließlich aus pages.status (siehe api.pages).
   pageVisibility: {
     /**
-     * Lädt den Sichtbarkeitsstatus aller Seiten.
+     * Lädt Nav-Overrides (Auth).
      * GET /admin/page-visibility.php
-     * Antwort: { visibility: Record<string, boolean>, navOverrides: Record<string, NavOverrideDTO> }
      */
     get: () =>
       request<{
@@ -2386,7 +2449,7 @@ export const api = {
       }>("/admin/page-visibility", {}, true),
 
     /**
-     * Öffentlicher Endpoint (kein Auth) – für Navbar/Footer-Filterung.
+     * Öffentlicher Endpoint (kein Auth) – für Navbar/Footer-Overrides.
      * GET /public/page-visibility
      */
     getPublic: () =>
@@ -2396,12 +2459,10 @@ export const api = {
       }>("/public/page-visibility"),
 
     /**
-     * Speichert den Sichtbarkeitsstatus aller Seiten.
+     * Speichert Nav-Overrides.
      * PUT /admin/page-visibility
-     * Body: { visibility, navOverrides }
      */
     save: (payload: {
-      visibility: Record<string, boolean>;
       navOverrides: Record<string, { navHref: string; customHref: string; customLabel?: string }>;
     }) =>
       request<{ success: boolean; message?: string }>(
