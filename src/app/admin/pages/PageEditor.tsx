@@ -64,7 +64,6 @@ import {
   type BlockType,
 } from "../../../data/blocks";
 import { api } from "../../../lib/api-service";
-import { reseedPage } from "../../../lib/page-sync";
 import { BlockPreview } from "../components/BlockPreview";
 import { BlockSettingsSheet } from "../components/BlockSettingsSheet";
 import { cn } from "../../../lib/utils";
@@ -465,6 +464,18 @@ function BlockPicker({
   );
 }
 
+// ── Seed/Fallback-Erkennung (nur Save-Warnung, kein Blocker) ─────────────────
+// Erkennt, ob die aktuellen Blöcke noch die unveränderte Standard-Vorlage sind
+// (identische Array-Referenz zu PAGE_INITIAL_BLOCKS[slug] – z. B. direkt nach
+// einem Reset, bevor irgendetwas bearbeitet wurde) oder Figma-Platzhalter-
+// Assets enthalten. Dient nur dazu, vor dem Speichern zu warnen – blockiert
+// das Speichern nicht.
+function looksLikeSeedContent(blocks: PageBlock[], slug: string): boolean {
+  const seed = PAGE_INITIAL_BLOCKS[slug];
+  if (seed && blocks === seed) return true;
+  return blocks.some((b) => JSON.stringify(b.data).includes("figma:asset/"));
+}
+
 // ── Main Page Editor ──────────────────────────────────────────────────────────
 export default function PageEditor() {
   const { slug = "home" } = useParams<{ slug: string }>();
@@ -662,6 +673,19 @@ export default function PageEditor() {
       );
       if (!confirmed) return;
       allowEmptyBlocks = true;
+    } else if (looksLikeSeedContent(blocks, slug)) {
+      // Sieht nach unveränderter Standard-/Figma-Vorlage aus, nicht nach
+      // echten Live-Inhalten (z. B. direkt nach einem Reset) – vor dem
+      // Speichern explizit bestätigen lassen, statt stillschweigend zu
+      // überschreiben. Blockiert das Speichern NICHT, wenn bestätigt.
+      const confirmed = window.confirm(
+        `Die aktuellen Blöcke sehen wie die Standard-Vorlage (Seed-/Figma-Platzhalterdaten) aus, ` +
+        `nicht wie bearbeitete Live-Inhalte.\n\n` +
+        `Wenn du jetzt speicherst, ersetzt du damit möglicherweise bestehende echte CMS-Inhalte ` +
+        `auf der Live-Seite.\n\n` +
+        `Wirklich mit diesen Inhalten speichern?`
+      );
+      if (!confirmed) return;
     }
 
     setSaving(true);
@@ -977,24 +1001,48 @@ export default function PageEditor() {
                 <span style={{ fontFamily: "var(--font-condensed)", fontSize: "9px", fontWeight: 700, letterSpacing: "0.14em", color: "rgba(202,12,133,0.5)", textTransform: "uppercase" }}>
                   ✓ Synced mit Frontend
                 </span>
-                <button
-                  onClick={() => {
-                    if (window.confirm(`Seite "${meta.title}" auf Standard-Design zurücksetzen? Alle Änderungen gehen verloren.`)) {
+                {/* Studio ist gesperrt: der Reset-Button wird für slug="studio"
+                    gar nicht erst gerendert. Ein zweiter, unabhängiger
+                    Code-Guard steht zusätzlich direkt im onClick unten – siehe
+                    Kommentar dort. */}
+                {slug !== "studio" && (
+                  <button
+                    onClick={() => {
+                      // Harter Code-Guard, unabhängig von der Render-Bedingung
+                      // oben: Studio darf über diesen Handler nie zurückgesetzt
+                      // werden, auch nicht durch einen künftigen Refactor, der
+                      // die UI-Bedingung versehentlich lockert.
+                      if (slug === "studio") return;
+
                       const seed = PAGE_INITIAL_BLOCKS[slug];
-                      if (seed && seed.length > 0) {
-                        setBlocks(seed);
-                        setSelectedId(null);
-                        reseedPage(slug);
-                      }
-                    }
-                  }}
-                  title="Auf Standard zurücksetzen (löscht eigene Änderungen)"
-                  style={{ background: "none", border: "none", color: "rgba(202,12,133,0.4)", fontSize: "9px", cursor: "pointer", fontFamily: "var(--font-condensed)", letterSpacing: "0.1em", textTransform: "uppercase" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(202,12,133,0.8)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(202,12,133,0.4)")}
-                >
-                  ↺ Reset
-                </button>
+                      if (!seed || seed.length === 0) return;
+
+                      const typed = window.prompt(
+                        `Diese Aktion lädt die Standard-Vorlage in den Editor. Wenn du danach speicherst, ` +
+                        `können bestehende CMS-Inhalte überschrieben werden.\n\n` +
+                        `Dies ändert NUR den Editor-Entwurf hier im Browser – es wird nichts gespeichert ` +
+                        `oder veröffentlicht, bevor du aktiv auf "Speichern" klickst.\n\n` +
+                        `Zum Bestätigen exakt eintippen: RESET ${slug}`
+                      );
+                      if (typed?.trim() !== `RESET ${slug}`) return;
+
+                      // Nur lokaler Editor-Entwurf: kein localStorage-Write,
+                      // kein "nac-page-updated"-Event, kein API-Call. Ein
+                      // reseedPage()-Aufruf (wie zuvor hier) würde direkt den
+                      // von der öffentlichen Seite gelesenen localStorage-
+                      // Cache überschreiben – das widerspricht "nur Editor-
+                      // Entwurf" und wurde deshalb entfernt.
+                      setBlocks(seed);
+                      setSelectedId(null);
+                    }}
+                    title="Auf Standard zurücksetzen (löscht eigene Änderungen im Editor-Entwurf)"
+                    style={{ background: "none", border: "none", color: "rgba(202,12,133,0.4)", fontSize: "9px", cursor: "pointer", fontFamily: "var(--font-condensed)", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(202,12,133,0.8)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(202,12,133,0.4)")}
+                  >
+                    ↺ Reset
+                  </button>
+                )}
               </div>
             )}
 
