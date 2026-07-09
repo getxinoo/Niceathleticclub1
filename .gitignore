@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output — never commit or deploy from here directly
+dist/
+dist-ssr/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Editor/OS
+.DS_Store
+*.log
+npm-debug.log*
+
+# Vite
+.vite/

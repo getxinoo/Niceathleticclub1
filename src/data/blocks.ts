@@ -11,6 +11,8 @@
  */
 
 import { MEMBERSHIP_PLANS } from "./classes";
+import type { PageLink } from "../lib/links";
+import type { LayoutSettings } from "../lib/cms-types";
 
 // ── Block Instance ────────────────────────────────────────────────────────────
 
@@ -54,6 +56,18 @@ export interface PageBlock {
   id: string;
   type: BlockType;
   data: Record<string, unknown>;
+  /**
+   * Optional grid/layout override for this block (columns, gap, padding, ...).
+   * Additive — undefined for every block saved so far; renderers must treat
+   * a missing `layout` exactly as they do today (their current fixed layout).
+   */
+  layout?: LayoutSettings;
+  /**
+   * Optional link for blocks that are themselves clickable (e.g. a CTA
+   * banner). Individual card/box items carry their own `link` via
+   * `CardItem` (see lib/cms-types.ts) instead of this block-level field.
+   */
+  link?: PageLink;
 }
 
 // ── Typed Block Data ──────────────────────────────────────────────────────────

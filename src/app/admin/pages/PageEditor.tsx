@@ -631,6 +631,13 @@ export default function PageEditor() {
   };
 
   const deleteBlock = (id: string) => {
+    const block = blocks.find((b) => b.id === id);
+    const label = block ? BLOCK_REGISTRY[block.type]?.label ?? block.type : "Block";
+    // Explizite Bestätigung – keine versehentliche Löschung. Wirkt sich erst
+    // beim Speichern auf die Live-Seite aus (siehe handleSave-Guard oben).
+    if (!window.confirm(`Block "${label}" wirklich löschen? Diese Änderung wird erst beim Speichern übernommen.`)) {
+      return;
+    }
     setBlocks((prev) => prev.filter((b) => b.id !== id));
     if (selectedId === id) setSelectedId(null);
   };
