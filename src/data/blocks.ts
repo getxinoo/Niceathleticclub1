@@ -57,6 +57,14 @@ export interface PageBlock {
   type: BlockType;
   data: Record<string, unknown>;
   /**
+   * Optional per-section visibility. Additive — `undefined`/`false` renders the
+   * section exactly as today. When `true`, the public page renderers skip the
+   * block and the admin editor shows it dimmed with a "hidden" badge. This is a
+   * PAGE-COMPOSITION flag (which sections appear on this page), independent of
+   * `pages.status` (whole-page publish) — the two never substitute each other.
+   */
+  hidden?: boolean;
+  /**
    * Optional grid/layout override for this block (columns, gap, padding, ...).
    * Additive — undefined for every block saved so far; renderers must treat
    * a missing `layout` exactly as they do today (their current fixed layout).
@@ -438,6 +446,7 @@ export type FieldType =
   | "text"
   | "textarea"
   | "url"
+  | "link"
   | "toggle"
   | "multiselect"
   | "number"
@@ -551,10 +560,10 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "headlineLine2Outline", label: "Headline Zeile 2 – Outline", type: "text", placeholder: "VIBE!" },
       { key: "subtitle", label: "Subtext / Body", type: "textarea", placeholder: "Kurze Beschreibung oder Claim…" },
       { key: "btn1Label", label: "Button 1 – Beschriftung", type: "text", placeholder: "Öffnungszeiten" },
-      { key: "btn1Url", label: "Button 1 – Link", type: "text", placeholder: "/studio" },
+      { key: "btn1Url", label: "Button 1 – Link", type: "link", placeholder: "/studio" },
       { key: "btn1Style", label: "Button 1 – Stil", type: "select", options: [{ value: "primary", label: "Primary (Magenta)" }, { value: "ghost", label: "Ghost (Outline)" }] },
       { key: "btn2Label", label: "Button 2 – Beschriftung", type: "text", placeholder: "Kurspläne ansehen" },
-      { key: "btn2Url", label: "Button 2 – Link", type: "text", placeholder: "/kurse" },
+      { key: "btn2Url", label: "Button 2 – Link", type: "link", placeholder: "/kurse" },
       { key: "btn2Style", label: "Button 2 – Stil", type: "select", options: [{ value: "primary", label: "Primary (Magenta)" }, { value: "ghost", label: "Ghost (Outline)" }] },
     ],
   },
@@ -609,28 +618,28 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "pillar1Headline", label: "Säule 1 – Headline", type: "text", placeholder: "BUILT FOR BODYBUILDING" },
       { key: "pillar1Desc", label: "Säule 1 – Beschreibung", type: "textarea" },
       { key: "pillar1Cta", label: "Säule 1 – Button-Text", type: "text", placeholder: "Athletic Area entdecken" },
-      { key: "pillar1Link", label: "Säule 1 – Link", type: "text", placeholder: "/athletic-area" },
+      { key: "pillar1Link", label: "Säule 1 – Link", type: "link", placeholder: "/athletic-area" },
       // Säule 2
       { key: "pillar2Image", label: "Säule 2 – Bild", type: "media" },
       { key: "pillar2Tag", label: "Säule 2 – Tag", type: "text", placeholder: "CrossFit · HYROX · Functional Fitness" },
       { key: "pillar2Headline", label: "Säule 2 – Headline", type: "text", placeholder: "CROSSFIT GÖPPINGEN" },
       { key: "pillar2Desc", label: "Säule 2 – Beschreibung", type: "textarea" },
       { key: "pillar2Cta", label: "Säule 2 – Button-Text", type: "text", placeholder: "CrossFit Zone entdecken" },
-      { key: "pillar2Link", label: "Säule 2 – Link", type: "text", placeholder: "/crossfit-gp" },
+      { key: "pillar2Link", label: "Säule 2 – Link", type: "link", placeholder: "/crossfit-gp" },
       // Säule 3
       { key: "pillar3Image", label: "Säule 3 – Bild", type: "media" },
       { key: "pillar3Tag", label: "Säule 3 – Tag", type: "text", placeholder: "HYROX · Hybrid Fitness · Wettkampf" },
       { key: "pillar3Headline", label: "Säule 3 – Headline", type: "text", placeholder: "HYROX" },
       { key: "pillar3Desc", label: "Säule 3 – Beschreibung", type: "textarea" },
       { key: "pillar3Cta", label: "Säule 3 – Button-Text", type: "text", placeholder: "HYROX Zone entdecken" },
-      { key: "pillar3Link", label: "Säule 3 – Link", type: "text", placeholder: "/hyrox" },
+      { key: "pillar3Link", label: "Säule 3 – Link", type: "link", placeholder: "/hyrox" },
       // Säule 4
       { key: "pillar4Image", label: "Säule 4 – Bild", type: "media" },
       { key: "pillar4Tag", label: "Säule 4 – Tag", type: "text", placeholder: "Espresso · Whey Shakes · Protein Bars" },
       { key: "pillar4Headline", label: "Säule 4 – Headline", type: "text", placeholder: "DIE NICE THEKE" },
       { key: "pillar4Desc", label: "Säule 4 – Beschreibung", type: "textarea" },
       { key: "pillar4Cta", label: "Säule 4 – Button-Text", type: "text", placeholder: "Studio entdecken" },
-      { key: "pillar4Link", label: "Säule 4 – Link", type: "text", placeholder: "/nice-theke" },
+      { key: "pillar4Link", label: "Säule 4 – Link", type: "link", placeholder: "/nice-theke" },
     ],
   },
 
@@ -780,9 +789,9 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "headlineOutline", label: "Headline – Outline", type: "text", placeholder: "MOVEMENT" },
       { key: "subtitle", label: "Subtext", type: "textarea" },
       { key: "btn1Label", label: "Button 1 – Beschriftung", type: "text", placeholder: "Probetraining" },
-      { key: "btn1Url", label: "Button 1 – Link", type: "text", placeholder: "/kontakt" },
+      { key: "btn1Url", label: "Button 1 – Link", type: "link", placeholder: "/kontakt" },
       { key: "btn2Label", label: "Button 2 – Beschriftung", type: "text", placeholder: "Unser Team kennenlernen" },
-      { key: "btn2Url", label: "Button 2 – Link", type: "text", placeholder: "/team" },
+      { key: "btn2Url", label: "Button 2 – Link", type: "link", placeholder: "/team" },
     ],
   },
 

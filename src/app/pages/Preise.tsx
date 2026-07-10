@@ -772,7 +772,7 @@ export default function Preise() {
         transition={{ duration: 0.45 }}
         style={{ backgroundColor: "var(--surface-0)" }}
       >
-        {blocks.map((block) => renderBlock(block))}
+        {blocks.filter((block) => !block.hidden).map((block) => renderBlock(block))}
 
         {/* Statische FAQ-Sektion – immer angezeigt */}
         <section

@@ -906,7 +906,7 @@ export default function Team() {
         ogImage="https://nicefitness.de/images/team/dome.png"
       />
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}>
-        {blocks.map((block) => {
+        {blocks.filter((block) => !block.hidden).map((block) => {
           switch (block.type) {
             case "team-header":
               return (
