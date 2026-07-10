@@ -70,6 +70,7 @@ import {
 import { api } from "../../../lib/api-service";
 import { FIGMA_ASSET_PREFIX } from "../../../lib/images";
 import { BlockPreview } from "../components/BlockPreview";
+import { MobilePreviewFrame } from "../components/MobilePreviewFrame";
 import { BlockSettingsSheet } from "../components/BlockSettingsSheet";
 import { cn } from "../../../lib/utils";
 import { usePageVisibility } from "../../context/PageVisibilityContext";
@@ -1350,19 +1351,8 @@ export default function PageEditor() {
               className="flex-1 overflow-y-auto"
               style={{ background: "#111" }}
             >
-              <div
-                style={{
-                  margin: "0 auto",
-                  maxWidth: previewMode === "mobile" ? "390px" : "1280px",
-                  background: "#050505",
-                  minHeight: "100%",
-                  boxShadow: previewMode === "mobile"
-                    ? "0 0 40px rgba(0,0,0,0.8)"
-                    : "none",
-                  transition: "max-width 0.3s ease",
-                }}
-              >
-                {blocks.length === 0 ? (
+              {(() => {
+                const previewInner = blocks.length === 0 ? (
                   /* Empty state in preview */
                   <div
                     className="flex flex-col items-center justify-center"
@@ -1492,8 +1482,31 @@ export default function PageEditor() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
-                )}
-              </div>
+                );
+
+                // Mobile: echtes 390px-Viewport via iframe — Tailwind-Breakpoints
+                // sind viewport-basiert, nur so greifen exakt die öffentlichen
+                // Mobile-Zweige (identisches Markup, identische Styles).
+                // Desktop: Direkt-Render bei 1280px (Desktop-Breakpoints korrekt).
+                return previewMode === "mobile" ? (
+                  <div style={{ height: "100%" }}>
+                    <MobilePreviewFrame width={390}>
+                      <div style={{ background: "#050505", minHeight: "100%" }}>{previewInner}</div>
+                    </MobilePreviewFrame>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      margin: "0 auto",
+                      maxWidth: "1280px",
+                      background: "#050505",
+                      minHeight: "100%",
+                    }}
+                  >
+                    {previewInner}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

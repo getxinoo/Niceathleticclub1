@@ -1,12 +1,15 @@
 /**
  * BlockRenderer.tsx – Zentrale Block-Render-Engine (Single Source of Truth)
  * ─────────────────────────────────────────────────────────────────────────────
- * WICHTIG: Kein Import von Studio.tsx / Team.tsx (erzeugt zirkuläre Imports
- * und bringt die App zum Absturz). Studio/Team-Blöcke haben hier eigene,
- * vollständige Inline-Renderer.
+ * Studio- und Team-Blöcke rendern die ECHTEN geteilten Section-Komponenten
+ * aus Studio.tsx bzw. Team.tsx — Admin-Vorschau und öffentliche Seite teilen
+ * damit exakt dasselbe Markup (kein vereinfachtes Admin-Duplikat).
  *
- * Die echten Seiten (Studio.tsx, Team.tsx) rendern ihre Sections direkt –
- * das Live-Frontend bleibt davon komplett unberührt.
+ * Import-Richtung ist azyklisch: Studio.tsx/Team.tsx importieren weder
+ * BlockRenderer noch BlockPreview. Sollte eine Seite jemals BlockRenderer
+ * benötigen, muss die betroffene Section stattdessen in ein eigenes Modul
+ * extrahiert werden — NICHT hierher zurückkopiert (Drift war die Ursache des
+ * Produktions-Bildausfalls vom 2026-07-10).
  */
 
 import { useState } from "react";
@@ -28,6 +31,7 @@ import { MOCK_REVIEWS } from "../../../data/reviews";
 // keinen Zirkelbezug. Preise.tsx (Live-Frontend) verwendet exakt dieselbe
 // Komponente + denselben Hook.
 import { usePricingData } from "../../../lib/use-pricing";
+import { StudioHeroSection, StudioZonesSection, StudioInfoSection } from "../../pages/Studio";
 import { PricingAddonsSection, PricingSection, PricingComparisonSection } from "../pricing";
 import { TeamGridSection } from "../../pages/Team";
 import { BLOCK_REGISTRY } from "../../../data/blocks";
@@ -579,93 +583,12 @@ function ZoneGridBlock({ d }: { d: ZoneGridBlockData }) {
   return <section style={{ background: S, padding: P96, textAlign: "center" }}><div style={W1280}>{d.heading && <H2 t={d.heading} mb={d.subtitle ? 12 : 48} />}{d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: 14, marginBottom: 48 }}>{d.subtitle}</p>}<ApiBox label="Zonen-Raster" /></div></section>;
 }
 
-// ── Studio-Blöcke (Inline, KEIN Import aus Studio.tsx) ────────────────────────
-function StudioHeroBlock({ d }: { d: StudioHeroBlockData }) {
-  return (
-    <section style={{ position: "relative", minHeight: "80vh", display: "flex", alignItems: "flex-end", background: S, overflow: "hidden" }}>
-      <img src={img(d.heroImage)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .5 }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(5,5,5,.95) 0%,rgba(5,5,5,.2) 70%,transparent 100%)" }} />
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 1280, margin: "0 auto", padding: "0 24px 80px", width: "100%" }}>
-        {d.label && <p style={{ fontFamily: "var(--font-condensed)", fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", color: "var(--brand)", marginBottom: 24, textTransform: "uppercase" }}>— {d.label}</p>}
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(3rem,10vw,8rem)", lineHeight: .92, letterSpacing: "0.02em", textTransform: "uppercase", margin: "0 0 24px" }}>
-          <span style={{ color: "white" }}>{d.headlineNormal} </span><span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-        </h1>
-        {d.subtitle && <p style={{ color: "rgba(255,255,255,.6)", fontSize: 14, maxWidth: 560, lineHeight: 1.7, marginBottom: 32 }}>{d.subtitle}</p>}
-        <div style={{ display: "flex", gap: 32, marginBottom: 40, flexWrap: "wrap" }}>
-          {[{ v: d.quickStat1Val, l: d.quickStat1Label }, { v: d.quickStat2Val, l: d.quickStat2Label }, { v: d.quickStat3Val, l: d.quickStat3Label }].filter(s => s.v).map((s, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: "var(--font-display)", fontSize: "2rem", color: "white", margin: 0 }}>{s.v}</p>
-              <p style={{ fontFamily: "var(--font-condensed)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,.4)", textTransform: "uppercase" }}>{s.l}</p>
-            </div>
-          ))}
-        </div>
-        {d.ctaLabel && <PBtn label={d.ctaLabel} to={d.ctaUrl} />}
-      </div>
-    </section>
-  );
-}
-
-function StudioZonesBlock({ d }: { d: StudioZonesBlockData }) {
-  return (
-    <section style={{ background: S, padding: P96 }}>
-      <div style={W1280}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
-          <SLabel t={d.sectionLabel} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.4rem,6vw,5rem)", lineHeight: .9, letterSpacing: "0.02em", textTransform: "uppercase", color: "white", margin: 0 }}>
-            {d.headlineNormal} <span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-          {(d.zones || []).map((zone, i) => (
-            <div key={zone.key || i} style={{ position: "relative", overflow: "hidden", minHeight: zone.large ? 400 : 200, gridRow: zone.large ? "span 2" : undefined }}>
-              <img src={img(zone.image)} alt={zone.label} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .6 }} />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(5,5,5,.9) 0%,rgba(5,5,5,.1) 60%)" }} />
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20 }}>
-                <span style={{ fontFamily: "var(--font-condensed)", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", color: "var(--brand)", textTransform: "uppercase" }}>{zone.tag}</span>
-                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "white", margin: "6px 0", letterSpacing: "0.03em", textTransform: "uppercase" }}>{zone.label}</h3>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,.5)", lineHeight: 1.5 }}>{zone.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StudioInfoBlock({ d }: { d: StudioInfoBlockData }) {
-  return (
-    <section style={{ background: S, padding: P96 }}>
-      <div style={W1280}>
-        <div style={{ marginBottom: 48 }}>
-          <SLabel t={d.sectionLabel} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.4rem,6vw,5rem)", lineHeight: .9, letterSpacing: "0.02em", textTransform: "uppercase", color: "white" }}>
-            {d.headlineNormal} <span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 32 }}>
-          <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
-            <p style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--brand)", textTransform: "uppercase", marginBottom: 16 }}>{d.studioHoursHeading}</p>
-            {(d.hours || []).map((row, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.05)" }}>
-                <span style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,.6)", textTransform: "uppercase" }}>{row.day}</span>
-                <span style={{ fontSize: 13, color: "white" }}>{row.time}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
-            <p style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--brand)", textTransform: "uppercase", marginBottom: 16 }}>{d.addressHeading}</p>
-            <p style={{ color: "white", fontSize: 14, marginBottom: 4 }}>{d.addressLine1}</p>
-            <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 2 }}>{d.addressLine2}</p>
-            <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 20 }}>{d.addressLine3}</p>
-            {d.contactEmail && <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 20 }}>{d.contactEmail}</p>}
-            {d.ctaLabel && <PBtn label={d.ctaLabel} to={d.ctaUrl} />}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+// ── Studio-Blöcke: ECHTE geteilte Sections aus Studio.tsx ────────────────────
+// Kein vereinfachtes Admin-Duplikat mehr: die Vorschau rendert exakt die
+// öffentlichen Komponenten (Markup, Styles, Slot-Mosaik identisch). Der Import
+// ist azyklisch — Studio.tsx importiert BlockRenderer/BlockPreview nicht
+// (gleiches Muster wie TeamGridSection weiter unten). showSlotLabels blendet
+// nur die Admin-Positions-Badges als Overlay ein, ersetzt aber kein Markup.
 
 // ── Team-Blöcke (Inline, KEIN Import aus Team.tsx) ────────────────────────────
 function TeamHeaderBlock({ d }: { d: TeamHeaderBlockData }) {
@@ -729,9 +652,9 @@ export function BlockRenderer({ block }: { block: PageBlock }) {
     case "legal-content":   return <LegalContentBlock d={d as LegalContentBlockData} />;
     case "timetable":       return <TimetableBlock d={d as TimetableBlockData} />;
     case "zone-grid":       return <ZoneGridBlock d={d as ZoneGridBlockData} />;
-    case "studio-hero":     return <StudioHeroBlock d={d as StudioHeroBlockData} />;
-    case "studio-zones":    return <StudioZonesBlock d={d as StudioZonesBlockData} />;
-    case "studio-info":     return <StudioInfoBlock d={d as StudioInfoBlockData} />;
+    case "studio-hero":     return <StudioHeroSection data={d as unknown as StudioHeroBlockData} reduced={false} />;
+    case "studio-zones":    return <StudioZonesSection data={d as unknown as StudioZonesBlockData} showSlotLabels />;
+    case "studio-info":     return <StudioInfoSection data={d as unknown as StudioInfoBlockData} />;
     case "team-header":     return <TeamHeaderBlock d={d as TeamHeaderBlockData} />;
     case "team-grid":       return <TeamGridBlock d={d as TeamGridBlockData} />;
     default:
