@@ -34,6 +34,9 @@ import {
   type HeroBlockData,
   type StatsBlockData,
   type PricingBlockData,
+  type PricingCardsBlockData,
+  type PricingAddonsBlockData,
+  type PricingCompareBlockData,
   type FeaturesListBlockData,
   type CtaBlockData,
   type FaqBlockData,
@@ -683,6 +686,49 @@ function CtaSection({ data }: { data: CtaBlockData }) {
   );
 }
 
+// ── Pricing Cards Block (real API data) ──────────────────────────────────────
+function PricingCardsSection({ data }: { data: PricingCardsBlockData }) {
+  const { data: pricingData, loading } = usePricingData("preise");
+  if (loading) return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "64px 24px" }}>
+      <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(202,12,133,0.3)", borderTopColor: "var(--brand)", animation: "spin 0.7s linear infinite" }} />
+    </div>
+  );
+  const all = pricingData?.plans ?? [];
+  const sel = (data.selectedPlans ?? []) as string[];
+  const plans = sel.length === 0 || sel.includes("all") ? all : all.filter((p) => sel.includes(p.slug));
+  return <PricingSection plans={plans} title={data.heading || "Unsere Tarife"} titleOutline="" subtitle="" />;
+}
+
+// ── Pricing Addons Block (real API data, CMS-filtered) ───────────────────────
+function PricingAddonsCmsBlock({ data }: { data: PricingAddonsBlockData }) {
+  const { data: pricingData, loading } = usePricingData("preise");
+  if (loading) return null;
+  let addons = pricingData?.addons ?? [];
+  const sel = data.selectedAddonSlugs;
+  const hidden = data.hiddenAddonSlugs;
+  if (sel && sel.length > 0) {
+    addons = sel.map((slug) => addons.find((a) => a.slug === slug)).filter(Boolean) as typeof addons;
+  }
+  if (hidden && hidden.length > 0) {
+    addons = addons.filter((a) => !hidden.includes(a.slug));
+  }
+  return (
+    <PricingAddonsSection
+      addons={addons}
+      heading={data.heading || undefined}
+      subtitle={data.subtitle || undefined}
+    />
+  );
+}
+
+// ── Pricing Compare Block (real API data) ────────────────────────────────
+function PricingCompareCmsBlock({ data }: { data: PricingCompareBlockData }) {
+  const { data: pricingData, loading } = usePricingData("preise");
+  if (loading) return null;
+  return <PricingComparisonSection comparison={pricingData?.comparison ?? null} />;
+}
+
 // ── Rich Text (fallback) ──────────────────────────────────────────────────────
 function RichTextSection({ data }: { data: RichTextBlockData }) {
   return (
@@ -707,13 +753,16 @@ function RichTextSection({ data }: { data: RichTextBlockData }) {
 // ── Block Dispatcher ──────────────────────────────────────────────────────────
 function renderBlock(block: PageBlock) {
   switch (block.type) {
-    case "hero":          return <HeroSection     key={block.id} data={block.data as HeroBlockData} />;
-    case "stats":         return <StatsSection    key={block.id} data={block.data as StatsBlockData} />;
-    case "pricing":       return <PricingBlock    key={block.id} data={block.data as PricingBlockData} />;
-    case "features-list": return <FeaturesSection key={block.id} data={block.data as FeaturesListBlockData} />;
-    case "cta":           return <CtaSection      key={block.id} data={block.data as CtaBlockData} />;
-    case "rich-text":     return <RichTextSection key={block.id} data={block.data as RichTextBlockData} />;
-    default:              return null;
+    case "hero":            return <HeroSection        key={block.id} data={block.data as HeroBlockData} />;
+    case "stats":           return <StatsSection       key={block.id} data={block.data as StatsBlockData} />;
+    case "pricing":         return <PricingBlock       key={block.id} data={block.data as PricingBlockData} />;
+    case "pricing-cards":   return <PricingCardsSection   key={block.id} data={block.data as PricingCardsBlockData} />;
+    case "pricing-addons":  return <PricingAddonsCmsBlock key={block.id} data={block.data as PricingAddonsBlockData} />;
+    case "pricing-compare": return <PricingCompareCmsBlock key={block.id} data={block.data as PricingCompareBlockData} />;
+    case "features-list":   return <FeaturesSection    key={block.id} data={block.data as FeaturesListBlockData} />;
+    case "cta":             return <CtaSection         key={block.id} data={block.data as CtaBlockData} />;
+    case "rich-text":       return <RichTextSection    key={block.id} data={block.data as RichTextBlockData} />;
+    default:                return null;
   }
 }
 

@@ -207,12 +207,16 @@ export interface ContactFormBlockData {
 
 export interface PricingCardsBlockData {
   heading: string;
-  selectedPlans: Array<"all" | "starter" | "athletic" | "nicest">;
+  selectedPlans: Array<"all" | "athletic-weekend" | "athletic" | "nicest" | "athletic-unlimited">;
 }
 
 export interface PricingAddonsBlockData {
   heading: string;
   subtitle: string;
+  /** CMS: ordered addon slugs to show. Empty/undefined = show all from API. */
+  selectedAddonSlugs?: string[];
+  /** CMS: addon slugs to hide. Applied after selectedAddonSlugs. */
+  hiddenAddonSlugs?: string[];
 }
 
 export interface PricingCompareBlockData {
@@ -370,6 +374,15 @@ export interface TeamGridBlockData {
   mobileCTAHeadline: string;
   mobileCTABtnLabel: string;
   mobileCTABtnUrl: string;
+  /**
+   * CMS-controlled: ordered list of member slugs/IDs to display.
+   * Empty/undefined = show all visible members from API (default = current behavior).
+   */
+  selectedMemberIds?: string[];
+  /**
+   * CMS-controlled: member slugs/IDs to hide from this section.
+   */
+  hiddenMemberIds?: string[];
 }
 
 // ── Studio-spezifische Interfaces ─────────────────────────────────────────────
@@ -852,10 +865,11 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
         type: "multiselect",
         description: "Wähle einen oder mehrere Tarife, die auf dieser Seite gezeigt werden.",
         options: [
-          { value: "all",     label: "Alle Tarife" },
-          { value: "starter", label: "Starter" },
-          { value: "athletic", label: "Athletic" },
-          { value: "nicest",  label: "Nicest" },
+          { value: "all",               label: "Alle Tarife" },
+          { value: "athletic-weekend",  label: "Athletic Weekend" },
+          { value: "athletic",          label: "Athletic" },
+          { value: "nicest",            label: "Nicest" },
+          { value: "athletic-unlimited",label: "Athletic Unlimited" },
         ],
       },
     ],
