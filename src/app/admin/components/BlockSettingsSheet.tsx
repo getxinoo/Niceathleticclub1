@@ -22,16 +22,23 @@ import {
   HelpCircle,
   Trash2,
   Plus,
+  Copy,
+  ChevronUp,
+  ChevronDown,
   Mail,
   PlusCircle,
   Table,
   Zap,
+  Link2,
+  Globe,
+  AlertTriangle,
 } from "lucide-react";
 import {
   BLOCK_REGISTRY,
   type PageBlock,
   type FieldSchema,
 } from "../../../data/blocks";
+import { classifyLinkInput, validateLink } from "../../../lib/links";
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<
@@ -77,6 +84,15 @@ function nextId() {
 /** Ensure every repeater item has a stable `_id` (used as AnimatePresence key). */
 function withId(item: Record<string, unknown>): Record<string, unknown> {
   return item._id ? item : { ...item, _id: nextId() };
+}
+
+/** Deep clone a plain repeater item (data-only, no functions/DOM). */
+function structuredCloneSafe(item: Record<string, unknown>): Record<string, unknown> {
+  try {
+    return JSON.parse(JSON.stringify(item));
+  } catch {
+    return { ...item };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -543,6 +559,94 @@ function MediaField({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ── LinkField — internal/external link with validation ────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// The data model stays a plain string (backward-compatible with every existing
+// btn*Url / *Link / ctaUrl field). This widget only classifies + validates that
+// string live: internal must start with "/", external with http(s)://, and
+// "javascript:" / "#" are rejected (see lib/links.ts — the single rule source).
+
+function LinkField({
+  field,
+  value,
+  onChange,
+}: {
+  field: FieldSchema;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const raw = value ?? "";
+  const trimmed = raw.trim();
+  const kind = classifyLinkInput(raw).kind; // "internal" | "external" | "none"
+
+  // Validate only when something is typed (empty = "no link", which is valid).
+  let error: string | undefined;
+  if (trimmed !== "") {
+    if (/^\s*javascript:/i.test(trimmed)) {
+      error = "javascript:-Links sind nicht erlaubt.";
+    } else if (trimmed === "#" || trimmed.startsWith("#")) {
+      error = 'Anker/"#"-Links sind hier nicht erlaubt – gib einen echten Pfad oder eine URL an.';
+    } else if (kind === "none") {
+      error = 'Link muss mit "/" (intern) oder "http://" / "https://" (extern) beginnen.';
+    } else {
+      // Reuse the canonical validator for the finer rules.
+      const link =
+        kind === "internal"
+          ? ({ kind: "internal", path: trimmed } as const)
+          : ({ kind: "external", url: trimmed } as const);
+      const res = validateLink(link);
+      if (!res.valid) error = res.error;
+    }
+  }
+
+  const badge =
+    trimmed === ""
+      ? { label: "Kein Link", color: "rgba(255,255,255,0.3)", Icon: Link2 }
+      : kind === "internal"
+      ? { label: "Intern", color: "#60a5fa", Icon: Link2 }
+      : kind === "external"
+      ? { label: "Extern", color: "#a78bfa", Icon: Globe }
+      : { label: "Ungültig", color: "#f87171", Icon: AlertTriangle };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        type="text"
+        value={raw}
+        placeholder={field.placeholder ?? "/interner-pfad oder https://…"}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ ...inputStyle, borderColor: error ? "rgba(248,113,113,0.6)" : BLUR_BORDER }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = error ? "rgba(248,113,113,0.8)" : FOCUS_BORDER)}
+        onBlur={(e) => (e.currentTarget.style.borderColor = error ? "rgba(248,113,113,0.6)" : BLUR_BORDER)}
+      />
+      <div className="flex items-center gap-2" style={{ flexWrap: "wrap" }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontFamily: "var(--font-condensed)",
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: badge.color,
+            background: `${badge.color}14`,
+            border: `1px solid ${badge.color}33`,
+            padding: "2px 7px",
+          }}
+        >
+          <badge.Icon size={9} /> {badge.label}
+        </span>
+        {error && (
+          <span style={{ fontSize: 11, color: "#f87171", lineHeight: 1.4 }}>{error}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ── FieldRow — dispatcher (declared BEFORE RepeaterField for clarity) ─────────
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -594,6 +698,15 @@ function FieldRow({
           value={String(value ?? "")}
           onChange={onChange as (v: string) => void}
           type="url"
+        />
+      )}
+
+      {/* ── link (internal/external, validated) ───────────────────────────────── */}
+      {field.type === "link" && (
+        <LinkField
+          field={field}
+          value={String(value ?? "")}
+          onChange={onChange as (v: string) => void}
         />
       )}
 
@@ -676,6 +789,56 @@ function FieldRow({
   );
 }
 
+// ── Small icon button used inside repeater item headers ───────────────────────
+function RepeaterItemBtn({
+  icon: Icon,
+  title,
+  onClick,
+  disabled = false,
+  danger = false,
+}: {
+  icon: React.ComponentType<{ size?: number }>;
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
+  const hoverColor = danger ? "rgba(239,68,68,0.85)" : "rgba(255,255,255,0.8)";
+  const hoverBg = danger ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.08)";
+  const hoverBorder = danger ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.18)";
+  return (
+    <button
+      type="button"
+      title={title}
+      disabled={disabled}
+      onClick={onClick}
+      className="flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-[0.92] disabled:opacity-25 disabled:cursor-not-allowed"
+      style={{
+        width: "24px",
+        height: "24px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "3px",
+        color: "rgba(255,255,255,0.35)",
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.background = hoverBg;
+        e.currentTarget.style.borderColor = hoverBorder;
+        e.currentTarget.style.color = hoverColor;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+        e.currentTarget.style.color = "rgba(255,255,255,0.35)";
+      }}
+    >
+      <Icon size={11} />
+    </button>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ── RepeaterField ─────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -706,9 +869,10 @@ function RepeaterField({
   const buildEmpty = (): Record<string, unknown> => {
     const obj: Record<string, unknown> = { _id: nextId() };
     field.subFields?.forEach((sf) => {
-      if (sf.type === "toggle") obj[sf.key] = false;
+      if (sf.type === "toggle") obj[sf.key] = true; // new rows default to visible
       else if (sf.type === "number") obj[sf.key] = sf.min ?? 0;
       else if (sf.type === "multiselect") obj[sf.key] = [];
+      else if (sf.type === "repeater") obj[sf.key] = []; // nested list starts empty
       else obj[sf.key] = "";
     });
     return obj;
@@ -718,6 +882,27 @@ function RepeaterField({
 
   const removeItem = (id: unknown) =>
     onChange(items.filter((item) => item._id !== id));
+
+  /** Insert a deep clone of the item (fresh _id) right after it. */
+  const duplicateItem = (id: unknown) => {
+    const idx = items.findIndex((it) => it._id === id);
+    if (idx === -1) return;
+    const clone = { ...structuredCloneSafe(items[idx]), _id: nextId() };
+    const next = [...items];
+    next.splice(idx + 1, 0, clone);
+    onChange(next);
+  };
+
+  /** Move an item up (-1) or down (+1), clamped to bounds. */
+  const moveItem = (id: unknown, dir: -1 | 1) => {
+    const idx = items.findIndex((it) => it._id === id);
+    const to = idx + dir;
+    if (idx === -1 || to < 0 || to >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(idx, 1);
+    next.splice(to, 0, moved);
+    onChange(next);
+  };
 
   const updateItem = (id: unknown, key: string, val: unknown) =>
     onChange(
@@ -795,34 +980,32 @@ function RepeaterField({
                 #{idx + 1}
               </span>
 
-              {/* Delete button */}
-              <button
-                type="button"
-                onClick={() => removeItem(item._id)}
-                title="Eintrag löschen"
-                className="flex items-center justify-center cursor-pointer transition-all duration-150 active:scale-[0.92]"
-                style={{
-                  width: "26px",
-                  height: "26px",
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: "3px",
-                  color: "rgba(255,255,255,0.28)",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background   = "rgba(239,68,68,0.12)";
-                  e.currentTarget.style.borderColor  = "rgba(239,68,68,0.4)";
-                  e.currentTarget.style.color        = "rgba(239,68,68,0.85)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background   = "rgba(255,255,255,0.04)";
-                  e.currentTarget.style.borderColor  = "rgba(255,255,255,0.08)";
-                  e.currentTarget.style.color        = "rgba(255,255,255,0.28)";
-                }}
-              >
-                <Trash2 size={11} />
-              </button>
+              {/* Item actions: move up / move down / duplicate / delete */}
+              <div className="flex items-center gap-1">
+                <RepeaterItemBtn
+                  icon={ChevronUp}
+                  title="Nach oben"
+                  disabled={idx === 0}
+                  onClick={() => moveItem(item._id, -1)}
+                />
+                <RepeaterItemBtn
+                  icon={ChevronDown}
+                  title="Nach unten"
+                  disabled={idx === items.length - 1}
+                  onClick={() => moveItem(item._id, 1)}
+                />
+                <RepeaterItemBtn
+                  icon={Copy}
+                  title="Duplizieren"
+                  onClick={() => duplicateItem(item._id)}
+                />
+                <RepeaterItemBtn
+                  icon={Trash2}
+                  title="Eintrag löschen"
+                  danger
+                  onClick={() => removeItem(item._id)}
+                />
+              </div>
             </div>
 
             {/* Divider */}

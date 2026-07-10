@@ -668,7 +668,16 @@ export function TeamGridSection({ data }: { data: TeamGridBlockData }) {
             }))
             .filter((m) => m.visible)
             .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-          setTeamMembers(mapped);
+          // CMS-controlled selection (optional — undefined = show all in API order)
+          let filtered = mapped;
+          const cfgList = data.membersConfig;
+          if (cfgList && cfgList.length > 0) {
+            filtered = cfgList
+              .filter((cfg) => !cfg.hidden)
+              .map((cfg) => filtered.find((m) => m.id === cfg.id || m.slug === cfg.id))
+              .filter(Boolean) as TeamMember[];
+          }
+          setTeamMembers(filtered);
         } else {
           setTeamMembers([]);
         }
@@ -906,7 +915,7 @@ export default function Team() {
         ogImage="https://nicefitness.de/images/team/dome.png"
       />
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, ease: "easeOut" }}>
-        {blocks.map((block) => {
+        {blocks.filter((block) => !block.hidden).map((block) => {
           switch (block.type) {
             case "team-header":
               return (

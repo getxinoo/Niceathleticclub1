@@ -28,7 +28,9 @@ import { MOCK_REVIEWS } from "../../../data/reviews";
 // keinen Zirkelbezug. Preise.tsx (Live-Frontend) verwendet exakt dieselbe
 // Komponente + denselben Hook.
 import { usePricingData } from "../../../lib/use-pricing";
-import { PricingAddonsSection } from "../pricing";
+import { PricingAddonsSection, PricingSection, PricingComparisonSection } from "../pricing";
+import { TeamGridSection } from "../../pages/Team";
+import { BLOCK_REGISTRY } from "../../../data/blocks";
 
 // ── Figma-Assets ──────────────────────────────────────────────────────────────
 import pillarStrengthImg from "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png";
@@ -105,6 +107,14 @@ function CBtn({ label, to, s = "primary" }: { label: string; to: string; s?: "pr
 
 function ApiBox({ label }: { label: string }) {
   return <div style={{ padding: "40px 24px", background: "rgba(202,12,133,0.04)", border: "1px dashed rgba(202,12,133,0.2)", textAlign: "center" }}><p style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", color: "rgba(202,12,133,0.5)", textTransform: "uppercase" }}>{label} · wird aus der API geladen</p></div>;
+}
+
+function Spinner() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "64px 24px" }}>
+      <div style={{ width: 28, height: 28, borderRadius: "50%", border: "2px solid rgba(202,12,133,0.3)", borderTopColor: "var(--brand)", animation: "spin 0.7s linear infinite" }} />
+    </div>
+  );
 }
 
 function H2({ t, mb = 48 }: { t: string; mb?: number }) {
@@ -262,56 +272,50 @@ function PricingBlock({ d }: { d: PricingBlockData }) {
   );
 }
 
+// Real plan cards — same PricingSection + usePricingData("preise") as public /preise page.
+// selectedPlans (["all"] or real slugs) filters which plans appear.
 function PricingCardsBlock({ d }: { d: PricingCardsBlockData }) {
-  return <section style={{ background: S, padding: P96 }}><div style={{ ...W1100, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={48} />}<ApiBox label="Preis-Karten" /></div></section>;
+  const { data, loading } = usePricingData("preise");
+  if (loading) return <Spinner />;
+  const all = data?.plans ?? [];
+  const sel = ((d as unknown as Record<string, unknown>).selectedPlans ?? []) as string[];
+  const plans = sel.length === 0 || sel.includes("all") ? all : all.filter((p) => sel.includes(p.slug));
+  return <PricingSection plans={plans} title={d.heading || "Unsere Tarife"} titleOutline="" subtitle="" />;
 }
-// Renders the SAME PricingAddonsSection + usePricingData("preise") that the
-// public /preise page uses (see app/pages/Preise.tsx). The block's own
-// `heading`/`subtitle` fields are not applied here — PricingAddonsSection has
-// a fixed heading/subtitle by design, exactly as it does on the live page
-// today (Preise.tsx never reads a "pricing-addons" block for this section).
+// Real add-ons — same PricingAddonsSection + usePricingData("preise") as public /preise page.
+// Optional heading/subtitle from block data override component defaults additively.
 function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
   const { data, loading } = usePricingData("preise");
-
-  if (loading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", padding: "64px 24px" }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            border: "2px solid rgba(202,12,133,0.3)",
-            borderTopColor: "var(--brand)",
-            animation: "spin 0.7s linear infinite",
-          }}
-        />
-      </div>
-    );
+  if (loading) return <Spinner />;
+  let addons = data?.addons ?? [];
+  const sel = (d as unknown as Record<string, unknown>).selectedAddonSlugs as string[] | undefined;
+  const hidden = (d as unknown as Record<string, unknown>).hiddenAddonSlugs as string[] | undefined;
+  if (sel && sel.length > 0) {
+    addons = sel.map((slug) => addons.find((a) => a.slug === slug)).filter(Boolean) as typeof addons;
   }
-
+  if (hidden && hidden.length > 0) {
+    addons = addons.filter((a) => !hidden.includes(a.slug));
+  }
   return (
-    <div>
-      {(d.heading || d.subtitle) && (
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: 10,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "rgba(255,255,255,0.25)",
-            padding: "10px 24px 0",
-          }}
-        >
-          Hinweis: Überschrift/Unterzeile werden hier nicht verwendet – dieser Bereich hat ein festes Design auf der Live-Seite.
-        </p>
-      )}
-      <PricingAddonsSection addons={data?.addons ?? []} />
-    </div>
+    <PricingAddonsSection
+      addons={addons}
+      heading={d.heading || undefined}
+      subtitle={d.subtitle || undefined}
+    />
   );
 }
+// Real comparison table — same PricingComparisonSection + data as public /preise page.
 function PricingCompareBlock({ d }: { d: PricingCompareBlockData }) {
-  return <section style={{ background: S, padding: P96 }}><div style={{ ...W1100, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={48} />}<ApiBox label="Tarifvergleich" /></div></section>;
+  const { data, loading } = usePricingData("preise");
+  if (loading) return <Spinner />;
+  return (
+    <section style={{ background: S, padding: P96 }}>
+      <div style={W1100}>
+        {d.heading && <H2 t={d.heading} mb={40} />}
+        <PricingComparisonSection comparison={data?.comparison ?? null} />
+      </div>
+    </section>
+  );
 }
 
 function ReviewsBlock({ d }: { d: ReviewsBlockData }) {
@@ -337,8 +341,13 @@ function ReviewsBlock({ d }: { d: ReviewsBlockData }) {
   );
 }
 
+// Generic team overview — renders real TeamGridSection using team-grid defaults merged with block heading.
 function TeamBlock({ d }: { d: TeamBlockData }) {
-  return <section style={{ background: S, padding: P96 }}><div style={{ ...W1280, textAlign: "center" }}>{d.heading && <H2 t={d.heading} mb={48} />}<ApiBox label="Team" /></div></section>;
+  const merged = {
+    ...(BLOCK_REGISTRY["team-grid"].defaultData as Record<string, unknown>),
+    heading: d.heading,
+  } as unknown as TeamGridBlockData;
+  return <section style={{ background: S }}><TeamGridSection data={merged} /></section>;
 }
 
 function ContactFormBlock({ d }: { d: ContactFormBlockData }) {
@@ -692,18 +701,10 @@ function TeamHeaderBlock({ d }: { d: TeamHeaderBlockData }) {
   );
 }
 
+// Real team grid — same TeamGridSection the public /team page uses.
+// Fetches /team.php?visible=1; respects selectedMemberIds/hiddenMemberIds from block data.
 function TeamGridBlock({ d }: { d: TeamGridBlockData }) {
-  return (
-    <section style={{ background: S, padding: P96 }}>
-      <div style={W1280}>
-        {d.leadershipSectionLabel && <SLabel t={d.leadershipSectionLabel} />}
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2rem,5vw,4rem)", color: "white", marginBottom: 48, letterSpacing: "0.03em", textTransform: "uppercase" }}>
-          {d.leadershipHeadlineNormal} <span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.leadershipHeadlineOutline}</span>
-        </h2>
-        <ApiBox label="Team-Grid" />
-      </div>
-    </section>
-  );
+  return <section style={{ background: S }}><TeamGridSection data={d} /></section>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

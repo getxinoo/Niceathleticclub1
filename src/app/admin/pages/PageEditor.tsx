@@ -55,6 +55,9 @@ import {
   Redo2,
   Search,
   Globe,
+  Copy,
+  EyeOff,
+  AlertTriangle,
 } from "lucide-react";
 import {
   BLOCK_REGISTRY,
@@ -71,6 +74,17 @@ import { usePageVisibility } from "../../context/PageVisibilityContext";
 
 // ── DnD item type ────────────────────────────────────────────────────────────
 const DND_TYPE = "PAGE_BLOCK";
+
+// ── Local unique id for duplicated/added blocks (no server round-trip) ────────
+const uid = () => `blk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+/** True if a block's data references a figma:asset import or an Unsplash stock
+ *  URL — surfaced as a per-section warning chip and a save-time warning. This
+ *  is the asset-safety signal (see scripts/predeploy-check.mjs), not a blocker. */
+function blockHasAssetWarning(block: PageBlock): boolean {
+  const json = JSON.stringify(block.data);
+  return json.includes("figma:asset/") || /images\.unsplash\.com/i.test(json);
+}
 
 // ── Page meta (for toolbar) ───────────────────────────────────────────────────
 const PAGE_META: Record<string, { title: string; path: string }> = {
@@ -142,6 +156,8 @@ interface DraggableBlockProps {
   onSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onToggleHidden: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   moveBlock: (from: number, to: number) => void;
@@ -149,11 +165,13 @@ interface DraggableBlockProps {
 
 function DraggableBlock({
   block, index, isSelected, isFirst, isLast,
-  onSelect, onEdit, onDelete, onMoveUp, onMoveDown, moveBlock,
+  onSelect, onEdit, onDelete, onDuplicate, onToggleHidden, onMoveUp, onMoveDown, moveBlock,
 }: DraggableBlockProps) {
   const ref = useRef<HTMLDivElement>(null);
   const def = BLOCK_REGISTRY[block.type];
   const Icon = BLOCK_ICONS[block.type] ?? Layers;
+  const isHidden = !!block.hidden;
+  const hasWarning = blockHasAssetWarning(block);
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: DND_TYPE,
@@ -225,19 +243,37 @@ function DraggableBlock({
           </div>
 
           {/* Name + preview */}
-          <div className="flex-1 min-w-0">
-            <p
-              style={{
-                fontFamily: "var(--font-condensed)",
-                fontSize: "12px",
-                fontWeight: 700,
-                letterSpacing: "0.1em",
-                color: isSelected ? "white" : "rgba(255,255,255,0.7)",
-                textTransform: "uppercase",
-              }}
-            >
-              {def.label}
-            </p>
+          <div className="flex-1 min-w-0" style={{ opacity: isHidden ? 0.5 : 1 }}>
+            <div className="flex items-center gap-1.5">
+              <p
+                style={{
+                  fontFamily: "var(--font-condensed)",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: isSelected ? "white" : "rgba(255,255,255,0.7)",
+                  textTransform: "uppercase",
+                }}
+              >
+                {def.label}
+              </p>
+              {isHidden && (
+                <span
+                  title="Diese Sektion ist ausgeblendet (erscheint nicht auf der Live-Seite)"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 3, fontFamily: "var(--font-condensed)", fontSize: 8, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", padding: "1px 5px" }}
+                >
+                  <EyeOff size={8} /> Aus
+                </span>
+              )}
+              {hasWarning && (
+                <span
+                  title="Enthält ein figma:asset- oder Unsplash-Bild in einem editierbaren Feld"
+                  style={{ display: "inline-flex", alignItems: "center", color: "#f59e0b" }}
+                >
+                  <AlertTriangle size={11} />
+                </span>
+              )}
+            </div>
             <p
               className="truncate"
               style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)" }}
@@ -251,10 +287,12 @@ function DraggableBlock({
             className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
             onClick={(e) => e.stopPropagation()}
           >
-            <ActionIconBtn icon={Pencil}    title="Bearbeiten" onClick={onEdit}    color="var(--brand)" />
-            <ActionIconBtn icon={ChevronUp}   title="Nach oben"  onClick={onMoveUp}  disabled={isFirst} />
-            <ActionIconBtn icon={ChevronDown} title="Nach unten" onClick={onMoveDown} disabled={isLast} />
-            <ActionIconBtn icon={Trash2}    title="Löschen"    onClick={onDelete}  color="#f87171" />
+            <ActionIconBtn icon={Pencil}      title="Bearbeiten"  onClick={onEdit}     color="var(--brand)" />
+            <ActionIconBtn icon={isHidden ? Eye : EyeOff} title={isHidden ? "Einblenden" : "Ausblenden"} onClick={onToggleHidden} />
+            <ActionIconBtn icon={Copy}        title="Duplizieren" onClick={onDuplicate} />
+            <ActionIconBtn icon={ChevronUp}   title="Nach oben"   onClick={onMoveUp}   disabled={isFirst} />
+            <ActionIconBtn icon={ChevronDown} title="Nach unten"  onClick={onMoveDown} disabled={isLast} />
+            <ActionIconBtn icon={Trash2}      title="Löschen"     onClick={onDelete}   color="#f87171" />
           </div>
         </div>
       </div>
@@ -518,6 +556,11 @@ export default function PageEditor() {
   const [saving, setSaving]              = useState(false);
   const [saveSuccess, setSaveSuccess]     = useState(false);
 
+  // ── Dirty tracking (unsaved changes vs. last persisted snapshot) ────────────
+  const lastSavedRef = useRef<string>("");   // JSON of the last loaded/saved blocks
+  const loadedCountRef = useRef<number>(0);  // block count at load (large-delete guard)
+  const [dirty, setDirty] = useState(false);
+
   // Wrapper: pushes to history before update
   const setBlocks = useCallback((updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
     _setBlocks((prev) => {
@@ -604,6 +647,9 @@ export default function PageEditor() {
     _setBlocks(initial);
     setCanUndo(false);
     setCanRedo(false);
+    lastSavedRef.current = JSON.stringify(initial);
+    loadedCountRef.current = initial.length;
+    setDirty(false);
 
     // Background: try PHP API to get server-saved blocks (production).
     // admin=1 damit auch Draft-Seiten im Editor geladen werden können –
@@ -618,12 +664,21 @@ export default function PageEditor() {
           _setBlocks(serverBlocks);
           setCanUndo(false);
           setCanRedo(false);
+          lastSavedRef.current = JSON.stringify(serverBlocks);
+          loadedCountRef.current = serverBlocks.length;
+          setDirty(false);
         }
       })
       .catch(() => { /* already showing localStorage/seed */ });
 
     return () => { cancelled = true; };
   }, [slug]);
+
+  // Recompute the dirty flag whenever the working blocks diverge from the last
+  // persisted snapshot (drives the toolbar "Ungespeichert" indicator).
+  useEffect(() => {
+    setDirty(JSON.stringify(blocks) !== lastSavedRef.current);
+  }, [blocks]);
 
   // ── Block operations ───────────────────────────────────────────────────────
   const moveBlock = useCallback((fromIdx: number, toIdx: number) => {
@@ -651,6 +706,33 @@ export default function PageEditor() {
     }
     setBlocks((prev) => prev.filter((b) => b.id !== id));
     if (selectedId === id) setSelectedId(null);
+  };
+
+  // Duplicate a section: deep-clone its data, give it a fresh id, insert right
+  // after the original. Copies the `hidden`/`layout`/`link` composition flags too.
+  const duplicateBlock = (id: string) => {
+    setBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === id);
+      if (idx === -1) return prev;
+      const orig = prev[idx];
+      const clone: PageBlock = {
+        ...orig,
+        id: uid(),
+        data: JSON.parse(JSON.stringify(orig.data)),
+      };
+      const next = [...prev];
+      next.splice(idx + 1, 0, clone);
+      return next;
+    });
+  };
+
+  // Toggle a section's page-composition visibility (block.hidden). Independent
+  // of pages.status — a hidden block is skipped by the public renderers and
+  // shown dimmed here. Takes effect on the live page only after Speichern.
+  const toggleBlockHidden = (id: string) => {
+    setBlocks((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, hidden: !b.hidden } : b))
+    );
   };
 
   const updateBlockData = (id: string, data: Record<string, unknown>) => {
@@ -688,6 +770,32 @@ export default function PageEditor() {
       if (!confirmed) return;
     }
 
+    // Große Löschung: deutlich weniger Blöcke als beim Laden → explizit bestätigen
+    // (Schutz vor versehentlichem Massen-Löschen bestehender Live-Sektionen).
+    if (
+      blocks.length > 0 &&
+      loadedCountRef.current >= 4 &&
+      blocks.length < Math.ceil(loadedCountRef.current / 2)
+    ) {
+      const ok = window.confirm(
+        `Achtung: Du speicherst nur noch ${blocks.length} von ursprünglich ` +
+        `${loadedCountRef.current} Blöcken – ${loadedCountRef.current - blocks.length} ` +
+        `Sektionen werden auf der Live-Seite entfernt.\n\nFortfahren?`
+      );
+      if (!ok) return;
+    }
+
+    // Unsplash-Stockbild in editierbaren Bildfeldern → warnen (nicht blockieren):
+    // Marken-/Team-/Studio-Bilder sollen echte Assets sein (Asset-Safety, T2B).
+    if (blocks.some((b) => /images\.unsplash\.com/i.test(JSON.stringify(b.data)))) {
+      const ok = window.confirm(
+        `Hinweis: Mindestens ein Block referenziert ein Unsplash-Stockbild ` +
+        `in einem editierbaren Bildfeld. Für Marken-/Team-/Studio-Bereiche ` +
+        `sollten echte Assets verwendet werden.\n\nTrotzdem speichern?`
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
 
     // 1. SEO in localStorage persistieren
@@ -710,8 +818,16 @@ export default function PageEditor() {
         allow_empty_blocks: allowEmptyBlocks,
       });
     } catch (err) {
-      console.info("[PageEditor] PHP-API nicht erreichbar – in localStorage gespeichert.", err);
+      console.error("[PageEditor] PHP-API save failed:", err);
+      alert("Fehler beim Speichern in der Datenbank! Die Änderungen wurden nur lokal gesichert.");
+      setSaving(false);
+      return;
     }
+
+    // Neuen "gespeichert"-Snapshot setzen → Dirty-Indikator zurücksetzen.
+    lastSavedRef.current = JSON.stringify(blocks);
+    loadedCountRef.current = blocks.length;
+    setDirty(false);
 
     setSaving(false);
     setSaveSuccess(true);
@@ -779,6 +895,22 @@ export default function PageEditor() {
           >
             {blocks.length} {blocks.length === 1 ? "Block" : "Blöcke"}
           </span>
+
+          {/* Dirty indicator */}
+          {dirty && (
+            <span
+              title="Ungespeicherte Änderungen"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+                color: "#f59e0b", fontFamily: "var(--font-condensed)", fontSize: "10px",
+                fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 8px",
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
+              Ungespeichert
+            </span>
+          )}
 
           {/* Undo / Redo */}
           <div className="flex items-center" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -1096,6 +1228,8 @@ export default function PageEditor() {
                           setSettingsOpen(true);
                         }}
                         onDelete={() => deleteBlock(block.id)}
+                        onDuplicate={() => duplicateBlock(block.id)}
+                        onToggleHidden={() => toggleBlockHidden(block.id)}
                         onMoveUp={() => idx > 0 && moveBlock(idx, idx - 1)}
                         onMoveDown={() => idx < blocks.length - 1 && moveBlock(idx, idx + 1)}
                         moveBlock={moveBlock}
@@ -1270,11 +1404,12 @@ export default function PageEditor() {
                         style={{
                           position: "relative",
                           cursor: "pointer",
+                          opacity: block.hidden ? 0.4 : 1,
                           outline: selectedId === block.id
                             ? "2px solid var(--brand)"
                             : "2px solid transparent",
                           outlineOffset: "-2px",
-                          transition: "outline 0.15s",
+                          transition: "outline 0.15s, opacity 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           if (selectedId !== block.id)
@@ -1285,6 +1420,21 @@ export default function PageEditor() {
                             e.currentTarget.style.outline = "2px solid transparent";
                         }}
                       >
+                        {/* Hidden ribbon */}
+                        {block.hidden && (
+                          <div
+                            style={{
+                              position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+                              zIndex: 11, background: "rgba(0,0,0,0.78)", border: "1px solid rgba(255,255,255,0.15)",
+                              padding: "3px 12px", fontFamily: "var(--font-condensed)", fontSize: "10px",
+                              fontWeight: 700, letterSpacing: "0.15em", color: "rgba(255,255,255,0.7)",
+                              textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5,
+                            }}
+                          >
+                            <EyeOff size={10} /> Ausgeblendet
+                          </div>
+                        )}
+
                         {/* Selected label */}
                         {selectedId === block.id && (
                           <div

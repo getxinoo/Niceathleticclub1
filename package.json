@@ -6,6 +6,8 @@
   "scripts": {
     "build": "vite build",
     "download-images": "node scripts/download-images.mjs",
+    "validate-assets": "node scripts/download-images.mjs",
+    "predeploy:check": "node scripts/predeploy-check.mjs",
     "build:local": "node scripts/download-images.mjs && vite build",
     "build:export": "vite build && node scripts/organize-images.mjs",
     "dev": "vite"
