@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PageEditor – Split-screen Sitebuilder
  *
  * Layout:
@@ -63,6 +63,7 @@ import {
   BLOCK_REGISTRY,
   PAGE_INITIAL_BLOCKS,
   createBlock,
+  migrateLegacyBlocks,
   type PageBlock,
   type BlockType,
 } from "../../../data/blocks";
@@ -560,6 +561,7 @@ export default function PageEditor() {
   const lastSavedRef = useRef<string>("");   // JSON of the last loaded/saved blocks
   const loadedCountRef = useRef<number>(0);  // block count at load (large-delete guard)
   const [dirty, setDirty] = useState(false);
+  const [hasLegacyPricing, setHasLegacyPricing] = useState(false);
 
   // Wrapper: pushes to history before update
   const setBlocks = useCallback((updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
@@ -658,7 +660,7 @@ export default function PageEditor() {
       .then((res) => {
         if (cancelled) return;
         if (Array.isArray(res?.blocks) && res.blocks.length > 0) {
-          const serverBlocks = res.blocks as PageBlock[];
+          const serverBlocks = migrateLegacyBlocks(res.blocks as PageBlock[]);
           historyRef.current = [serverBlocks];
           historyIdxRef.current = 0;
           _setBlocks(serverBlocks);
@@ -899,7 +901,7 @@ export default function PageEditor() {
           {/* Dirty indicator */}
           {dirty && (
             <span
-              title="Ungespeicherte Änderungen"
+              title={published ? "Ungespeicherte Änderungen" : "Noch nicht veröffentlicht"}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
@@ -1000,13 +1002,13 @@ export default function PageEditor() {
               minWidth: "100px",
             }}
           >
-            {saving ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : saveSuccess ? (
-              <><CheckCircle2 size={13} /> Gespeichert</>
-            ) : (
-              <><Save size={13} /> Speichern</>
-            )}
+              {saving ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : saveSuccess ? (
+                <><CheckCircle2 size={13} /> Gespeichert</>
+              ) : (
+                <><Save size={13} /> {published ? "Veröffentlichen" : "Entwurf speichern"}</>
+              )}
           </button>
         </div>
 

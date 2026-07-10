@@ -47,25 +47,9 @@ import {
   type StudioAmenityItem,
 } from "../../data/blocks";
 
-// ── Zone images (Figma assets) ────────────────────────────────────────────────
-import crossfitZoneImg  from "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png";
-import athleticAreaImg  from "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png";
-import hyroxZoneImg     from "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png";
-import thekenBereichImg from "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png";
-import duschenImg       from "figma:asset/f06118a1042cae64d2462baf0c816cd2aa82d64a.png";
-import legDayImg        from "figma:asset/a75ed35fb9db584ac8784f61a27d15e2e55f72e9.png";
-
-// ── Asset resolver: figma:asset string → resolved import URL ─────────────────
-const ASSET_MAP: Record<string, string> = {
-  "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png": crossfitZoneImg,
-  "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png":  athleticAreaImg,
-  "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png":  hyroxZoneImg,
-  "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png":  thekenBereichImg,
-  "figma:asset/f06118a1042cae64d2462baf0c816cd2aa82d64a.png":  duschenImg,
-  "figma:asset/a75ed35fb9db584ac8784f61a27d15e2e55f72e9.png":  legDayImg,
-};
+// ── Asset resolver: (no longer needed, uses real paths) ───────────────
 export function resolveStudioAsset(src: string): string {
-  return ASSET_MAP[src] ?? src;
+  return src;
 }
 
 // ── Icon resolver: Lucide name string → React component ──────────────────────

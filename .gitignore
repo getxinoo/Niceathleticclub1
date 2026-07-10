@@ -32,3 +32,5 @@ sql-dump.md
 backups/
 deploy-package*
 UNSAFE_DO_NOT_DEPLOY*
+
+test-results/
