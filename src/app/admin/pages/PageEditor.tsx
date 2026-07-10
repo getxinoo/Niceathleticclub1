@@ -818,7 +818,10 @@ export default function PageEditor() {
         allow_empty_blocks: allowEmptyBlocks,
       });
     } catch (err) {
-      console.info("[PageEditor] PHP-API nicht erreichbar – in localStorage gespeichert.", err);
+      console.error("[PageEditor] PHP-API save failed:", err);
+      alert("Fehler beim Speichern in der Datenbank! Die Änderungen wurden nur lokal gesichert.");
+      setSaving(false);
+      return;
     }
 
     // Neuen "gespeichert"-Snapshot setzen → Dirty-Indikator zurücksetzen.
