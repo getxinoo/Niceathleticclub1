@@ -13,6 +13,7 @@
 import { MEMBERSHIP_PLANS } from "./classes";
 import type { PageLink } from "../lib/links";
 import type { LayoutSettings } from "../lib/cms-types";
+import { slotPositionLabel, normalizeLayoutVariant, type StudioLayoutVariant } from "../lib/studio-layout";
 
 // ── Block Instance ────────────────────────────────────────────────────────────
 
@@ -418,7 +419,15 @@ export interface StudioZoneData {
   tag: string;
   desc: string;
   image: string;
-  large: boolean;
+  /**
+   * VERALTET (Slot-Layout): Größe gehört zum SLOT, nicht zur Karte.
+   * Bleibt nur für gespeicherte Altdaten im Typ erhalten; die Renderer
+   * ignorieren dieses Feld — welche Karte groß erscheint, bestimmt allein
+   * layoutVariant + sichtbare Position (siehe lib/studio-layout.ts).
+   */
+  large?: boolean;
+  /** undefined = sichtbar. Ausgeblendete Zonen fallen vor der Slot-Berechnung raus. */
+  visible?: boolean;
   link?: string;
 }
 
@@ -426,6 +435,8 @@ export interface StudioZonesBlockData {
   sectionLabel: string;
   headlineNormal: string;
   headlineOutline: string;
+  /** Desktop-Mosaik: "feature-left" (Default) oder "feature-right". */
+  layoutVariant?: StudioLayoutVariant;
   zones: StudioZoneData[];
 }
 
@@ -472,6 +483,7 @@ export type FieldType =
   | "number"
   | "media"
   | "select"
+  | "layout-variant"
   | "repeater";
 
 export interface FieldSchema {
@@ -494,6 +506,23 @@ export interface FieldSchema {
    * Vorgeschlagene Bilder / Bildarchiv – klickbar im Media-Uploader.
    */
   imageSuggestions?: Array<{ url: string; label: string }>;
+  /**
+   * Only used when `type === "repeater"`.
+   * Liefert die Positions-/Rollenkennzeichnung eines Eintrags für die
+   * Item-Kopfzeile im Settings-Panel (z. B. "Position 1 · Groß links").
+   * visibleIndex ist der 0-basierte Index innerhalb der SICHTBAREN Einträge,
+   * oder null wenn der Eintrag selbst ausgeblendet ist. blockData sind die
+   * aktuellen (ungespeicherten) Daten des gesamten Blocks, damit z. B. die
+   * Layout-Variante berücksichtigt werden kann. Reine Anzeige, keine Logik.
+   */
+  positionRole?: (visibleIndex: number | null, blockData: Record<string, unknown>) => string;
+  /**
+   * Only used when `type === "toggle"`.
+   * Anzeigewert, wenn das Datenfeld noch undefined ist (Altdaten). Beispiel
+   * Zonen-Sichtbarkeit: undefined bedeutet "sichtbar" → toggleDefault: true,
+   * sonst zeigt der Schalter fälschlich "aus" für sichtbare Alt-Einträge.
+   */
+  toggleDefault?: boolean;
 }
 
 // ── Block Definition ──────────────────────────────────────────────────────────
@@ -1447,6 +1476,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       sectionLabel: "Trainingsbereiche",
       headlineNormal: "SECHS ZONEN,",
       headlineOutline: "EIN CLUB",
+      layoutVariant: "feature-left",
       zones: [
         { key: "athletic", label: "Athletic Area",    iconName: "Dumbbell",   tag: "Strength · Power · Olympic Lifting",   desc: "Vier vollausgestattete Power Racks, Eleiko-Olympia-Stangen, Technogym-Maschinen und eine Plattform speziell für olympisches Gewichtheben.", image: "/images/studio/athletic-zone.png", large: true,  link: "/athletic-area" },
         { key: "crossfit", label: "CrossFit Zone",   iconName: "Zap",        tag: "Functional · Rig · Boxes",             desc: "Modulares Rig, Wall Balls, GHDs, Assault Bikes – alles für dein WOD.", image: "/images/studio/crossfit-zone.png", large: false, link: "/crossfit-gp" },
@@ -1461,16 +1491,24 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "headlineNormal",  label: "Headline – Normal",  type: "text", placeholder: "SECHS ZONEN," },
       { key: "headlineOutline", label: "Headline – Outline", type: "text", placeholder: "EIN CLUB" },
       {
+        key: "layoutVariant", label: "Desktop-Layout", type: "layout-variant",
+        description: "Bestimmt, welcher SLOT groß ist – nicht welche Karte. Die Karte auf der Feature-Position erscheint groß; Umsortieren ändert sofort, welche Karte das ist. Mobile zeigt immer die gespeicherte Reihenfolge 1→2→3…",
+      },
+      {
         key: "zones", label: "Zonen", type: "repeater",
-        description: "Jede Zone: Label, Icon-Name (Lucide), Tag, Beschreibung, Bild, Large-Flag, optionaler Link.",
+        description: "Reihenfolge = Position im Mosaik (Pfeile zum Umsortieren). Ausgeblendete Zonen fallen vor der Slot-Berechnung raus – es entsteht kein Loch.",
+        positionRole: (visibleIndex, blockData) =>
+          visibleIndex === null
+            ? "Ausgeblendet"
+            : slotPositionLabel(normalizeLayoutVariant(blockData.layoutVariant), visibleIndex),
         subFields: [
-          { key: "key",      label: "Schlüssel",      type: "text",     placeholder: "athletic" },
+          { key: "key",      label: "Schlüssel",       type: "text",     placeholder: "athletic" },
           { key: "label",    label: "Name",            type: "text",     placeholder: "Athletic Area" },
           { key: "iconName", label: "Icon-Name",       type: "text",     placeholder: "Dumbbell" },
           { key: "tag",      label: "Tag",             type: "text",     placeholder: "Strength · Power" },
           { key: "desc",     label: "Beschreibung",    type: "textarea" },
           { key: "image",    label: "Zonenbild",       type: "media" },
-          { key: "large",    label: "Groß (2×2 Grid)", type: "toggle" },
+          { key: "visible",  label: "Sichtbar",        type: "toggle",   toggleDefault: true },
           { key: "link",     label: "Link (optional)", type: "text",     placeholder: "/athletic-area" },
         ],
       },
