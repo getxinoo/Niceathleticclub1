@@ -668,7 +668,20 @@ export function TeamGridSection({ data }: { data: TeamGridBlockData }) {
             }))
             .filter((m) => m.visible)
             .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
-          setTeamMembers(mapped);
+          // CMS-controlled selection (optional — undefined = show all in API order)
+          let filtered = mapped;
+          const selIds = data.selectedMemberIds;
+          const hidIds = data.hiddenMemberIds;
+          if (selIds && selIds.length > 0) {
+            // Preserve CMS-defined order
+            filtered = selIds
+              .map((id) => filtered.find((m) => m.id === id || m.slug === id))
+              .filter(Boolean) as TeamMember[];
+          }
+          if (hidIds && hidIds.length > 0) {
+            filtered = filtered.filter((m) => !hidIds.includes(m.id) && !hidIds.includes(m.slug ?? ""));
+          }
+          setTeamMembers(filtered);
         } else {
           setTeamMembers([]);
         }
