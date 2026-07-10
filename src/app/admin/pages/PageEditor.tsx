@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PageEditor – Split-screen Sitebuilder
  *
  * Layout:
@@ -561,6 +561,7 @@ export default function PageEditor() {
   const lastSavedRef = useRef<string>("");   // JSON of the last loaded/saved blocks
   const loadedCountRef = useRef<number>(0);  // block count at load (large-delete guard)
   const [dirty, setDirty] = useState(false);
+  const [hasLegacyPricing, setHasLegacyPricing] = useState(false);
 
   // Wrapper: pushes to history before update
   const setBlocks = useCallback((updater: PageBlock[] | ((prev: PageBlock[]) => PageBlock[])) => {
@@ -900,7 +901,7 @@ export default function PageEditor() {
           {/* Dirty indicator */}
           {dirty && (
             <span
-              title="Ungespeicherte Änderungen"
+              title={published ? "Ungespeicherte Änderungen" : "Noch nicht veröffentlicht"}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
