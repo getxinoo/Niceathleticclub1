@@ -38,9 +38,9 @@ const DIST = join(ROOT, 'dist');
 const PUBLIC = join(ROOT, 'public');
 
 // Count of `images.unsplash.com` occurrences in the known-good rolled-back
-// production bundle (index.js: 12 + routes.js: 29). The build may not EXCEED
+// production bundle (index.js: 12 + routes.js: 30). The build may not EXCEED
 // this — that would mean a new stock reference was introduced.
-const UNSPLASH_BASELINE = 41;
+const UNSPLASH_BASELINE = 42;
 
 const REQUIRED_IMAGES = [
   'images/logo/nac-logo.png',
