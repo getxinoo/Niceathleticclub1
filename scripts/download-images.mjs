@@ -1,153 +1,129 @@
 /**
- * download-images.mjs
+ * download-images.mjs — DISABLED / VALIDATION-ONLY (T2B asset-safety)
  * ─────────────────────────────────────────────────────────────────────────────
- * Lädt alle Fitness-Bilder von Unsplash herunter und speichert sie unter
- * public/images/ in der korrekten Ordnerstruktur.
+ * ⚠️ The original version of this script downloaded generic Unsplash STOCK
+ * photos into public/images/. That is exactly the behavior that caused the
+ * 2026-07-09 production image regression (real NAC logo/team/studio images were
+ * replaced by stock imagery). It has been removed.
  *
- * Nach dem Download kann "npm run build" die Bilder als echte lokale
- * Dateien einbinden (Vite kopiert public/ automatisch nach dist/).
+ * This script no longer downloads anything. It ONLY validates that the real
+ * canonical images already exist locally under public/images/, are non-empty,
+ * are not HTML fallback files, and have valid image magic bytes. It never
+ * fetches from Unsplash (or anywhere), never overwrites, never substitutes a
+ * placeholder.
+ *
+ * Real assets are recovered from the live site / Figma Make export, committed
+ * to public/images/, and mapped in vite.config.ts (FIGMA_ASSET_MAP). To add a
+ * new image, put the real file in public/images/ and map its hash there.
  *
  * USAGE:
- *   node scripts/download-images.mjs
- *   npm run download-images
- *
- * ANFORDERUNGEN:
- *   - Node.js 18+ (fetch ist nativ verfügbar)
- *   - Internetverbindung für den ersten Download
- *   - Nach dem Download: Bilder werden gecacht, kein erneuter Download nötig
+ *   node scripts/download-images.mjs   → validates local canonical assets
+ *   npm run download-images            → same (kept for muscle-memory)
  */
 
-import { writeFile, mkdir, access } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..');
-const PUBLIC_IMAGES = join(PROJECT_ROOT, 'public', 'images');
+const PUBLIC_DIR = join(PROJECT_ROOT, 'public');
 
-// ── Bild-Downloads: Zielpfad → Unsplash-URL ──────────────────────────────────
-const DOWNLOADS = [
-  // ── Studio ─────────────────────────────────────────────────────────────────
-  ['studio/entrance.png',       'https://images.unsplash.com/photo-1675312189035-8e7685cd620e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['studio/crossfit-zone.png',  'https://images.unsplash.com/photo-1706029831405-619b27e3260c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['studio/athletic-zone.png',  'https://images.unsplash.com/photo-1577992805669-c80be3285f36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['studio/duschen.png',        'https://images.unsplash.com/photo-1754390754632-ee84c133a3f3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['studio/leg-day.png',        'https://images.unsplash.com/photo-1774279922117-4d68af51559e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-
-  // ── CrossFit ───────────────────────────────────────────────────────────────
-  ['crossfit/hero.png',         'https://images.unsplash.com/photo-1706029831405-619b27e3260c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['crossfit/pillar.png',       'https://images.unsplash.com/photo-1687803551107-b3ff415ef426?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['crossfit/schedule.png',     'https://images.unsplash.com/photo-1687803551107-b3ff415ef426?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['crossfit/community.png',    'https://images.unsplash.com/photo-1750698545009-679820502908?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-
-  // ── HYROX ──────────────────────────────────────────────────────────────────
-  ['hyrox/hero.png',            'https://images.unsplash.com/photo-1757147517573-2521839225c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['hyrox/hyrox-zone.png',      'https://images.unsplash.com/photo-1674445304334-54e826ba8554?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['hyrox/community.png',       'https://images.unsplash.com/photo-1674445304334-54e826ba8554?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['hyrox/gallery-1.png',       'https://images.unsplash.com/photo-1710746904729-f3ad9f682bb9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['hyrox/gallery-3.png',       'https://images.unsplash.com/photo-1577992805669-c80be3285f36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['hyrox/gallery-5.png',       'https://images.unsplash.com/photo-1687803551107-b3ff415ef426?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-
-  // ── Athletic Area ──────────────────────────────────────────────────────────
-  ['athletic/hero.png',         'https://images.unsplash.com/photo-1767552273968-da3464e2986c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['athletic/gallery-1.png',    'https://images.unsplash.com/photo-1577992805669-c80be3285f36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['athletic/gallery-2.png',    'https://images.unsplash.com/photo-1710746904729-f3ad9f682bb9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['athletic/gallery-3.png',    'https://images.unsplash.com/photo-1767552273968-da3464e2986c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['athletic/gallery-4.png',    'https://images.unsplash.com/photo-1774279922117-4d68af51559e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['athletic/gallery-5.png',    'https://images.unsplash.com/photo-1706029831405-619b27e3260c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-
-  // ── Theke / Café ───────────────────────────────────────────────────────────
-  ['theke/theke-area.png',      'https://images.unsplash.com/photo-1693996045300-521e9d08cabc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-  ['theke/espresso.png',        'https://images.unsplash.com/photo-1764361276489-79b17d9a8782?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1200&q=85'],
-  ['theke/lampe.png',           'https://images.unsplash.com/photo-1765980161462-e570da02217f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1000&q=85'],
-  ['theke/wide.png',            'https://images.unsplash.com/photo-1693996045300-521e9d08cabc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1600&q=85'],
-
-  // ── Team ───────────────────────────────────────────────────────────────────
-  ['team/dome.png',             'https://images.unsplash.com/photo-1750698545009-679820502908?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1400&q=85'],
-  ['team/mimi.png',             'https://images.unsplash.com/photo-1728854303060-e6b6fdf665cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-  ['team/bella.png',            'https://images.unsplash.com/photo-1664673531303-c933ac4cee70?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-  ['team/wilhelm.png',          'https://images.unsplash.com/photo-1704223523232-526f6fab30a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-  ['team/lydi.png',             'https://images.unsplash.com/photo-1642506539297-6021bf65badc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-  ['team/jana.png',             'https://images.unsplash.com/photo-1728854303060-e6b6fdf665cc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-  ['team/leo.png',              'https://images.unsplash.com/flagged/photo-1597786776169-17549989c2bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=85'],
-
-  // ── Über Uns ───────────────────────────────────────────────────────────────
-  ['ueber-uns/mimi-action.png', 'https://images.unsplash.com/photo-1642506539297-6021bf65badc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1400&q=85'],
+// Canonical images that MUST exist locally (kept in sync with FIGMA_ASSET_MAP
+// in vite.config.ts). Paths are relative to public/.
+const REQUIRED = [
+  'images/logo/nac-logo.png',
+  'images/logo/nac-logo-admin.png',
+  'images/team/dome.png',
+  'images/team/mimi.png',
+  'images/team/bella.png',
+  'images/team/wilhelm.png',
+  'images/team/lydi.png',
+  'images/team/jana.png',
+  'images/team/leo.png',
+  'images/ueber-uns/mimi-action.png',
+  'images/studio/entrance.png',
+  'images/studio/crossfit-zone.png',
+  'images/studio/athletic-zone.png',
+  'images/studio/duschen.png',
+  'images/studio/leg-day.png',
+  'images/crossfit/pillar.png',
+  'images/crossfit/hero.png',
+  'images/crossfit/schedule.png',
+  'images/crossfit/community.png',
+  'images/hyrox/hyrox-zone.png',
+  'images/hyrox/hero.png',
+  'images/hyrox/community.png',
+  'images/hyrox/gallery-1.png',
+  'images/hyrox/gallery-3.png',
+  'images/hyrox/gallery-5.png',
+  'images/athletic/hero.png',
+  'images/athletic/gallery-1.png',
+  'images/athletic/gallery-2.png',
+  'images/athletic/gallery-3.png',
+  'images/athletic/gallery-4.png',
+  'images/athletic/gallery-5.png',
+  'images/theke/theke-area.png',
+  'images/theke/espresso.png',
+  'images/theke/lampe.png',
+  'images/theke/wide.png',
 ];
 
-// ── Download-Funktion ─────────────────────────────────────────────────────────
-async function downloadImage(relativePath, url) {
-  const fullPath = join(PUBLIC_IMAGES, relativePath);
-  const dir = dirname(fullPath);
-
-  // Bereits vorhanden? → überspringen
-  try {
-    await access(fullPath);
-    console.log(`  ✓ (bereits vorhanden) ${relativePath}`);
-    return;
-  } catch {
-    // Datei existiert nicht → herunterladen
-  }
-
-  // Ordner erstellen falls nicht vorhanden
-  await mkdir(dir, { recursive: true });
-
-  // Bild herunterladen
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'NAC-Image-Downloader/1.0',
-      'Accept': 'image/jpeg,image/png,image/*',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} für ${url}`);
-  }
-
-  const buffer = await response.arrayBuffer();
-  await writeFile(fullPath, Buffer.from(buffer));
-  const kb = Math.round(buffer.byteLength / 1024);
-  console.log(`  ↓ ${relativePath} (${kb} KB)`);
+/** Returns a short format label from magic bytes, or null if not a known image. */
+function detectImage(buf) {
+  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return 'PNG';
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'JPEG';
+  if (buf.length >= 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'WEBP';
+  if (buf.length >= 5 && buf.toString('ascii', 0, 5) === 'GIF87') return 'GIF';
+  if (buf.length >= 6 && buf.toString('ascii', 0, 6) === 'GIF89a') return 'GIF';
+  const head = buf.toString('utf8', 0, Math.min(buf.length, 400)).trim().toLowerCase();
+  if (head.startsWith('<svg') || head.startsWith('<?xml')) return 'SVG';
+  return null;
 }
 
-// ── Hauptprogramm ─────────────────────────────────────────────────────────────
+/** True if the file looks like an HTML page (SPA-rewrite fallback), not an image. */
+function looksLikeHtml(buf) {
+  const head = buf.toString('utf8', 0, Math.min(buf.length, 400)).trim().toLowerCase();
+  return head.startsWith('<!doctype html') || head.startsWith('<html');
+}
+
 async function main() {
-  console.log('\n🏋️  NAC Image Downloader');
+  console.log('\n🔒 NAC asset validator (no downloads — validation only)');
   console.log('══════════════════════════════════════════════');
-  console.log(`📁 Zielordner: public/images/`);
-  console.log(`📦 ${DOWNLOADS.length} Bilder zu prüfen\n`);
+  let ok = 0;
+  const problems = [];
 
-  // Hauptordner erstellen
-  await mkdir(PUBLIC_IMAGES, { recursive: true });
-
-  let downloaded = 0;
-  let skipped = 0;
-  let errors = 0;
-
-  for (const [relativePath, url] of DOWNLOADS) {
+  for (const rel of REQUIRED) {
+    const full = join(PUBLIC_DIR, rel);
+    let size = 0;
     try {
-      const fullPath = join(PUBLIC_IMAGES, relativePath);
-      let exists = false;
-      try { await access(fullPath); exists = true; } catch {}
-
-      await downloadImage(relativePath, url);
-      if (exists) skipped++; else downloaded++;
-    } catch (err) {
-      console.error(`  ✗ FEHLER ${relativePath}: ${err.message}`);
-      errors++;
+      size = (await stat(full)).size;
+    } catch {
+      problems.push(`MISSING       ${rel}`);
+      continue;
     }
+    if (size === 0) { problems.push(`EMPTY (0 B)   ${rel}`); continue; }
+
+    const buf = await readFile(full);
+    if (looksLikeHtml(buf)) { problems.push(`HTML FALLBACK ${rel}`); continue; }
+    const fmt = detectImage(buf);
+    if (!fmt) { problems.push(`NOT AN IMAGE  ${rel}`); continue; }
+
+    ok++;
   }
 
-  console.log('\n══════════════════════════════════════════════');
-  console.log(`✅ Fertig!`);
-  console.log(`   Neu heruntergeladen:  ${downloaded}`);
-  console.log(`   Bereits vorhanden:    ${skipped}`);
-  if (errors > 0) console.log(`   Fehler:               ${errors}`);
-  console.log('\n💡 Jetzt "npm run build" ausführen');
-  console.log('   Die Bilder werden automatisch nach dist/images/ kopiert.\n');
+  console.log(`   Valid:   ${ok} / ${REQUIRED.length}`);
+  if (problems.length) {
+    console.log(`   Problems: ${problems.length}`);
+    for (const p of problems) console.error(`     ✗ ${p}`);
+    console.error('\n❌ Canonical assets incomplete/invalid. Restore the real files — ' +
+      'do NOT download stock images. Build will fail on missing assets.\n');
+    process.exit(1);
+  }
+  console.log('\n✅ All canonical assets present and valid. No downloads performed.\n');
 }
 
 main().catch((err) => {
-  console.error('\n❌ Kritischer Fehler:', err.message);
+  console.error('\n❌ Validator error:', err.message);
   process.exit(1);
 });
