@@ -705,13 +705,22 @@ function PricingAddonsCmsBlock({ data }: { data: PricingAddonsBlockData }) {
   const { data: pricingData, loading } = usePricingData("preise");
   if (loading) return null;
   let addons = pricingData?.addons ?? [];
-  const sel = data.selectedAddonSlugs;
-  const hidden = data.hiddenAddonSlugs;
-  if (sel && sel.length > 0) {
-    addons = sel.map((slug) => addons.find((a) => a.slug === slug)).filter(Boolean) as typeof addons;
-  }
-  if (hidden && hidden.length > 0) {
-    addons = addons.filter((a) => !hidden.includes(a.slug));
+  if (data.addonsConfig && data.addonsConfig.length > 0) {
+    addons = data.addonsConfig
+      .filter((cfg) => !cfg.hidden)
+      .map((cfg) => {
+        const found = addons.find((a) => a.slug === cfg.id || a.id.toString() === cfg.id);
+        if (!found) return null;
+        const addon = { ...found };
+        if (cfg.optionsConfig && cfg.optionsConfig.length > 0) {
+          addon.options = cfg.optionsConfig
+            .filter((optCfg) => !optCfg.hidden)
+            .map((optCfg) => addon.options?.find((o) => o.label === optCfg.id))
+            .filter(Boolean) as typeof addon.options;
+        }
+        return addon;
+      })
+      .filter(Boolean) as typeof addons;
   }
   return (
     <PricingAddonsSection

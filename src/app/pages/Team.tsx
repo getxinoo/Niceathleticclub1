@@ -670,16 +670,12 @@ export function TeamGridSection({ data }: { data: TeamGridBlockData }) {
             .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999));
           // CMS-controlled selection (optional — undefined = show all in API order)
           let filtered = mapped;
-          const selIds = data.selectedMemberIds;
-          const hidIds = data.hiddenMemberIds;
-          if (selIds && selIds.length > 0) {
-            // Preserve CMS-defined order
-            filtered = selIds
-              .map((id) => filtered.find((m) => m.id === id || m.slug === id))
+          const cfgList = data.membersConfig;
+          if (cfgList && cfgList.length > 0) {
+            filtered = cfgList
+              .filter((cfg) => !cfg.hidden)
+              .map((cfg) => filtered.find((m) => m.id === cfg.id || m.slug === cfg.id))
               .filter(Boolean) as TeamMember[];
-          }
-          if (hidIds && hidIds.length > 0) {
-            filtered = filtered.filter((m) => !hidIds.includes(m.id) && !hidIds.includes(m.slug ?? ""));
           }
           setTeamMembers(filtered);
         } else {

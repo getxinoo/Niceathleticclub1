@@ -210,13 +210,20 @@ export interface PricingCardsBlockData {
   selectedPlans: Array<"all" | "athletic-weekend" | "athletic" | "nicest" | "athletic-unlimited">;
 }
 
+export interface CmsRepeaterItem {
+  _id?: string;
+  id: string;
+  hidden?: boolean;
+}
+
+export interface CmsAddonRepeaterItem extends CmsRepeaterItem {
+  optionsConfig?: CmsRepeaterItem[];
+}
+
 export interface PricingAddonsBlockData {
   heading: string;
   subtitle: string;
-  /** CMS: ordered addon slugs to show. Empty/undefined = show all from API. */
-  selectedAddonSlugs?: string[];
-  /** CMS: addon slugs to hide. Applied after selectedAddonSlugs. */
-  hiddenAddonSlugs?: string[];
+  addonsConfig?: CmsAddonRepeaterItem[];
 }
 
 export interface PricingCompareBlockData {
@@ -885,10 +892,31 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     defaultData: {
       heading: "Optionale Erweiterungen",
       subtitle: "Ergänze deine Mitgliedschaft mit diesen Zusatzleistungen.",
+      addonsConfig: [],
     } satisfies PricingAddonsBlockData,
     fields: [
       { key: "heading",  label: "Überschrift", type: "text",     placeholder: "Optionale Erweiterungen" },
       { key: "subtitle", label: "Unterzeile",  type: "textarea", placeholder: "Ergänze deine Mitgliedschaft…" },
+      {
+        key: "addonsConfig",
+        label: "Add-ons anpassen",
+        type: "repeater",
+        description: "Füge Add-ons über ihren Slug hinzu (z.B. crossfit-hyrox, sauna)",
+        subFields: [
+          { key: "id", label: "Add-on ID / Slug", type: "text" },
+          { key: "hidden", label: "Add-on ausblenden", type: "toggle" },
+          { 
+            key: "optionsConfig", 
+            label: "Optionen anpassen", 
+            type: "repeater", 
+            description: "Optionen (z.B. '1x pro Woche').",
+            subFields: [
+              { key: "id", label: "Options-Label", type: "text" },
+              { key: "hidden", label: "Option ausblenden", type: "toggle" }
+            ] 
+          }
+        ]
+      }
     ],
   },
 
