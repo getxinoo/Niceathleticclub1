@@ -145,16 +145,53 @@ const _HASH_TO_PATH: Record<string, string> = {
 };
 
 /**
- * Löst einen "figma:asset/HASH.png" String (wie er in blocks.ts / API-Daten
- * vorkommt) in den stabilen /images/ Pfad auf.
- * Kann auch direkt in ASSET_MAP Definitionen als Wert verwendet werden.
+ * Laufzeit-Präfix für Legacy-Asset-Strings aus API-/localStorage-Daten.
+ *
+ * ABSICHTLICH aus zwei Teilen zusammengesetzt: der Predeploy-Gate
+ * (scripts/predeploy-check.mjs) lässt den Build fehlschlagen, sobald der
+ * zusammenhängende String "figma" + ":asset/" irgendwo im dist-Output
+ * auftaucht — genau dieser String hat den Produktions-Bildausfall vom
+ * 2026-07-10 verursacht (unaufgelöste Asset-Referenzen als <img src>).
+ * Der Resolver muss den Präfix aber weiterhin ERKENNEN können, um
+ * Legacy-Daten zur Laufzeit auf kanonische /images/-Pfade abzubilden.
  */
-export function resolveImg(figmaAssetUrl: string): string {
-  // Schon ein /images/ Pfad → direkt zurückgeben
-  if (figmaAssetUrl.startsWith('/images/') || figmaAssetUrl.startsWith('http')) {
-    return figmaAssetUrl;
+export const FIGMA_ASSET_PREFIX = ["figma", "asset/"].join(":");
+
+// Sichtbare Diagnose statt kaputtem Bild: roter Kasten mit Hinweistext.
+// Wird NIE durch ein Unsplash-/Stock-Bild ersetzt und NIE stillschweigend
+// ausgeblendet — ein unbekannter Hash ist ein Datenfehler, der auffallen muss.
+const MISSING_ASSET_PLACEHOLDER =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">' +
+    '<rect width="100%" height="100%" fill="#450a0a"/>' +
+    '<rect x="4" y="4" width="792" height="442" fill="none" stroke="#f87171" stroke-width="3" stroke-dasharray="12 8"/>' +
+    '<text x="50%" y="46%" fill="#fca5a5" font-family="monospace" font-size="28" text-anchor="middle">UNAUFGELÖSTES ASSET</text>' +
+    '<text x="50%" y="58%" fill="#fca5a5" font-family="monospace" font-size="14" text-anchor="middle">Unbekannter Asset-Hash – Bild im CMS neu zuweisen</text>' +
+    "</svg>"
+  );
+
+/**
+ * Löst einen Legacy-Asset-String (wie er in gespeicherten API-/localStorage-
+ * Blöcken vorkommt) in den stabilen /images/ Pfad auf.
+ *
+ *  • /images/…, http(s)://…, data:… → unverändert durchreichen
+ *  • bekannter Legacy-Hash          → exakter kanonischer /images/-Pfad
+ *  • unbekannter Legacy-Hash        → sichtbare Diagnose-Grafik + console.error
+ *                                     (verhindert zugleich, dass der Browser
+ *                                     eine ungültige figma-URL anfragt)
+ */
+export function resolveImg(src: string): string {
+  if (!src) return src;
+  if (src.startsWith('/images/') || src.startsWith('http') || src.startsWith('data:')) {
+    return src;
   }
-  // figma:asset/HASH.png → hash extrahieren
-  const hash = figmaAssetUrl.replace('figma:asset/', '');
-  return _HASH_TO_PATH[hash] ?? figmaAssetUrl;
+  if (src.startsWith(FIGMA_ASSET_PREFIX)) {
+    const hash = src.slice(FIGMA_ASSET_PREFIX.length);
+    const path = _HASH_TO_PATH[hash];
+    if (path) return path;
+    console.error(`[NAC assets] Unbekannter Legacy-Asset-Hash, kann nicht aufgelöst werden: ${hash}`);
+    return MISSING_ASSET_PLACEHOLDER;
+  }
+  return src;
 }

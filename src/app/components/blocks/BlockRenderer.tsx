@@ -32,23 +32,13 @@ import { PricingAddonsSection, PricingSection, PricingComparisonSection } from "
 import { TeamGridSection } from "../../pages/Team";
 import { BLOCK_REGISTRY } from "../../../data/blocks";
 
-// ── Figma-Assets ──────────────────────────────────────────────────────────────
-import pillarStrengthImg from "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png";
-import pillarCrossfitImg from "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png";
-import pillarHyroxImg    from "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png";
-import pillarThekeImg    from "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png";
-import athleticAreaImg   from "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png";
-import crossfitZoneImg   from "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png";
-
-const FIGMA_MAP: Record<string, string> = {
-  "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png": pillarStrengthImg,
-  "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png": pillarCrossfitImg,
-  "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png": pillarHyroxImg,
-  "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png": pillarThekeImg,
-  "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png": athleticAreaImg,
-  "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png": crossfitZoneImg,
-};
-const img = (src: string) => FIGMA_MAP[src] ?? src;
+// ── Kanonischer Asset-Resolver ────────────────────────────────────────────────
+// Ersetzt die frühere lokale FIGMA_MAP (nur 6 Hashes, mit rohen
+// "figma:asset/…"-Literal-Keys im Bundle). resolveImg deckt ALLE bekannten
+// Legacy-Hashes ab und liefert für unbekannte eine sichtbare Diagnose-Grafik —
+// niemals gelangt ein roher Legacy-String als src zum Browser.
+import { resolveImg } from "../../../lib/images";
+const img = resolveImg;
 
 // ── Icon-Map ──────────────────────────────────────────────────────────────────
 const ICONS: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {

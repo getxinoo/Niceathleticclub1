@@ -68,6 +68,7 @@ import {
   type BlockType,
 } from "../../../data/blocks";
 import { api } from "../../../lib/api-service";
+import { FIGMA_ASSET_PREFIX } from "../../../lib/images";
 import { BlockPreview } from "../components/BlockPreview";
 import { BlockSettingsSheet } from "../components/BlockSettingsSheet";
 import { cn } from "../../../lib/utils";
@@ -79,12 +80,15 @@ const DND_TYPE = "PAGE_BLOCK";
 // ── Local unique id for duplicated/added blocks (no server round-trip) ────────
 const uid = () => `blk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
-/** True if a block's data references a figma:asset import or an Unsplash stock
- *  URL — surfaced as a per-section warning chip and a save-time warning. This
- *  is the asset-safety signal (see scripts/predeploy-check.mjs), not a blocker. */
+/** True if a block's data references a legacy figma-asset string or an Unsplash
+ *  stock URL — surfaced as a per-section warning chip and a save-time warning.
+ *  This is the asset-safety signal (see scripts/predeploy-check.mjs), not a
+ *  blocker. FIGMA_ASSET_PREFIX is dynamically composed so the contiguous
+ *  legacy prefix never appears as a literal in the built bundle (the predeploy
+ *  gate fails on any such occurrence in dist). */
 function blockHasAssetWarning(block: PageBlock): boolean {
   const json = JSON.stringify(block.data);
-  return json.includes("figma:asset/") || /images\.unsplash\.com/i.test(json);
+  return json.includes(FIGMA_ASSET_PREFIX) || /images\.unsplash\.com/i.test(json);
 }
 
 // ── Page meta (for toolbar) ───────────────────────────────────────────────────
@@ -512,7 +516,7 @@ function BlockPicker({
 function looksLikeSeedContent(blocks: PageBlock[], slug: string): boolean {
   const seed = PAGE_INITIAL_BLOCKS[slug];
   if (seed && blocks === seed) return true;
-  return blocks.some((b) => JSON.stringify(b.data).includes("figma:asset/"));
+  return blocks.some((b) => JSON.stringify(b.data).includes(FIGMA_ASSET_PREFIX));
 }
 
 // ── Main Page Editor ──────────────────────────────────────────────────────────

@@ -9,7 +9,11 @@
 import { toast } from "sonner";
 
 // ── Konfiguration ─────────────────────────────────────────────────────────────
-export const BASE_URL: string = "https://nicefitness.de/api";
+// Wie im Header dokumentiert: VITE_API_BASE_URL überschreibt die Basis-URL
+// (z. B. für lokale Abnahmetests ohne Produktions-Traffic); ohne gesetzte
+// Variable bleibt der Produktions-Fallback exakt wie bisher.
+export const BASE_URL: string =
+  (import.meta.env?.VITE_API_BASE_URL as string | undefined) || "https://nicefitness.de/api";
 
 const TOKEN_KEY = "nac_auth_token";
 

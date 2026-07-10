@@ -47,9 +47,17 @@ import {
   type StudioAmenityItem,
 } from "../../data/blocks";
 
-// ── Asset resolver: (no longer needed, uses real paths) ───────────────
+// ── Asset resolver ────────────────────────────────────────────────────────────
+// NIEMALS wieder als No-op vereinfachen: gespeicherte Produktions-Blöcke
+// (pages.php / localStorage) enthalten weiterhin Legacy-Asset-Strings
+// ("figma:asset/<hash>.png"). Ein Passthrough schickt diese Strings roh als
+// <img src> an den Browser — genau das war der Produktions-Bildausfall vom
+// 2026-07-10 (Rollback nötig). resolveImg() bildet Legacy-Hashes auf die
+// kanonischen /images/-Pfade ab und liefert für unbekannte Hashes eine
+// sichtbare Diagnose-Grafik.
+import { resolveImg } from "../../lib/images";
 export function resolveStudioAsset(src: string): string {
-  return src;
+  return resolveImg(src);
 }
 
 // ── Icon resolver: Lucide name string → React component ──────────────────────
