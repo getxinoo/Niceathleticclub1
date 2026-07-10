@@ -789,8 +789,8 @@ export default function PageEditor() {
     // Marken-/Team-/Studio-Bilder sollen echte Assets sein (Asset-Safety, T2B).
     if (blocks.some((b) => /images\.unsplash\.com/i.test(JSON.stringify(b.data)))) {
       const ok = window.confirm(
-        `Hinweis: Mindestens ein Block referenziert ein images.unsplash.com ` +
-        `Stockbild in einem editierbaren Bildfeld. Für Marken-/Team-/Studio-Bereiche ` +
+        `Hinweis: Mindestens ein Block referenziert ein Unsplash-Stockbild ` +
+        `in einem editierbaren Bildfeld. Für Marken-/Team-/Studio-Bereiche ` +
         `sollten echte Assets verwendet werden.\n\nTrotzdem speichern?`
       );
       if (!ok) return;
