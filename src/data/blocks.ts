@@ -601,25 +601,25 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       headlineOutline: "EIN CLUB.",
       subtitle: "Heavy Machines. Bodybuilding. Powerlifting. Olympic Weightlifting. CrossFit. HYROX. Alles unter einem Dach – keine Kompromisse, nur Ergebnisse.",
       mobileLayout: "swipe",
-      pillar1Image: "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png",
+      pillar1Image: "/images/athletic/hero.png",
       pillar1Tag: "Bodybuilding · Muskelaufbau · Maschinen",
       pillar1Headline: "BUILT FOR BODYBUILDING",
       pillar1Desc: "Im Nice Athletic Club Göppingen trainierst du an Premium-Equipment von Eleiko, Gymleco, Nautilus, Flex Leverage, Body Masters und vieles mehr – von der Beinpresse bis zum Cable Crossover für maximalen Muskelaufbau.",
       pillar1Cta: "Athletic Area entdecken",
       pillar1Link: "/athletic-area",
-      pillar2Image: "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png",
+      pillar2Image: "/images/crossfit/hero.png",
       pillar2Tag: "CrossFit · HYROX · Functional Fitness",
       pillar2Headline: "CROSSFIT GÖPPINGEN",
       pillar2Desc: "CrossFit Göppingen im Nice Athletic Club: WODs, Olympic Lifting, Sled Pushes, Box Jumps & Kettlebell Swings – funktionelles Ganzkörpertraining für Kraft, Ausdauer und Athletik.",
       pillar2Cta: "CrossFit Zone entdecken",
       pillar2Link: "/crossfit-gp",
-      pillar3Image: "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png",
+      pillar3Image: "/images/hyrox/hero.png",
       pillar3Tag: "HYROX · Hybrid Fitness · Wettkampf",
       pillar3Headline: "HYROX",
       pillar3Desc: "HYROX im Nice Athletic Club Göppingen: 8 Stationen von SkiErg bis Wall Balls kombiniert mit Laufen – gezieltes Training für Open, Pro, Doubles & Relay.",
       pillar3Cta: "HYROX Zone entdecken",
       pillar3Link: "/hyrox",
-      pillar4Image: "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png",
+      pillar4Image: "/images/theke/theke-area.png",
       pillar4Tag: "Espresso · Whey Shakes · Protein Bars",
       pillar4Headline: "DIE NICE THEKE",
       pillar4Desc: "Lempresso aus der Siebträgermaschine, Whey Shakes, Protein Bars und mehr – dein Treffpunkt vor und nach dem Training.",
@@ -1406,7 +1406,7 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
     description: "Vollbild-Hero der Studio-Seite: Image-BG, Headline, Breadcrumb, Quick-Stats und CTA.",
     color: "#CA0C85",
     defaultData: {
-      heroImage: "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png",
+      heroImage: "/images/studio/athletic-zone.png",
       label: "Nice Athletic Club Göppingen",
       headlineNormal: "DAS",
       headlineOutline: "STUDIO",
@@ -1448,12 +1448,12 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       headlineNormal: "SECHS ZONEN,",
       headlineOutline: "EIN CLUB",
       zones: [
-        { key: "athletic", label: "Athletic Area",    iconName: "Dumbbell",   tag: "Strength · Power · Olympic Lifting",   desc: "Vier vollausgestattete Power Racks, Eleiko-Olympia-Stangen, Technogym-Maschinen und eine Plattform speziell für olympisches Gewichtheben.", image: "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png", large: true,  link: "/athletic-area" },
-        { key: "crossfit", label: "CrossFit Zone",   iconName: "Zap",        tag: "Functional · Rig · Boxes",             desc: "Modulares Rig, Wall Balls, GHDs, Assault Bikes – alles für dein WOD.", image: "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png", large: false, link: "/crossfit-gp" },
-        { key: "cardio",   label: "Hyrox Zone",      iconName: "Zap",        tag: "Hyrox · Endurance · Competition",      desc: "Offizieller Hyrox Training Club – SkiErg, Sled Push & Pull, Wall Balls, Burpee Broad Jumps und Farmers Carry auf wettkampfnahem Parcours.", image: "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png", large: false, link: "/hyrox" },
-        { key: "combat",   label: "Theken Bereich",  iconName: "Coffee",     tag: "Shakes · Snacks · Community",          desc: "Protein-Shakes, frische Smoothies, Espresso, gesunde Snacks und Clear Whey – der perfekte Treffpunkt vor und nach dem Training.", image: "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png", large: false, link: "/nice-theke" },
-        { key: "wellness", label: "Premium Duschen", iconName: "ShowerHead", tag: "Regendusche · Terrazzo · Wellness",     desc: "Großzügige Regenduschen mit edlem Terrazzo-Design, Premium-Pflegeprodukte und stilvolle Umkleiden – dein Finish nach jedem Workout.", image: "figma:asset/f06118a1042cae64d2462baf0c816cd2aa82d64a.png", large: false },
-        { key: "recovery", label: "Leg Day Zone",    iconName: "Dumbbell",   tag: "Beinpresse · Hack Squat · Extensions", desc: "Leg Press, Hack Squat, Beinstrecker & -beuger, Waden-Maschinen – Don't Skip Leg Day.", image: "figma:asset/a75ed35fb9db584ac8784f61a27d15e2e55f72e9.png", large: false },
+        { key: "athletic", label: "Athletic Area",    iconName: "Dumbbell",   tag: "Strength · Power · Olympic Lifting",   desc: "Vier vollausgestattete Power Racks, Eleiko-Olympia-Stangen, Technogym-Maschinen und eine Plattform speziell für olympisches Gewichtheben.", image: "/images/studio/athletic-zone.png", large: true,  link: "/athletic-area" },
+        { key: "crossfit", label: "CrossFit Zone",   iconName: "Zap",        tag: "Functional · Rig · Boxes",             desc: "Modulares Rig, Wall Balls, GHDs, Assault Bikes – alles für dein WOD.", image: "/images/studio/crossfit-zone.png", large: false, link: "/crossfit-gp" },
+        { key: "cardio",   label: "Hyrox Zone",      iconName: "Zap",        tag: "Hyrox · Endurance · Competition",      desc: "Offizieller Hyrox Training Club – SkiErg, Sled Push & Pull, Wall Balls, Burpee Broad Jumps und Farmers Carry auf wettkampfnahem Parcours.", image: "/images/hyrox/hero.png", large: false, link: "/hyrox" },
+        { key: "combat",   label: "Theken Bereich",  iconName: "Coffee",     tag: "Shakes · Snacks · Community",          desc: "Protein-Shakes, frische Smoothies, Espresso, gesunde Snacks und Clear Whey – der perfekte Treffpunkt vor und nach dem Training.", image: "/images/theke/theke-area.png", large: false, link: "/nice-theke" },
+        { key: "wellness", label: "Premium Duschen", iconName: "ShowerHead", tag: "Regendusche · Terrazzo · Wellness",     desc: "Großzügige Regenduschen mit edlem Terrazzo-Design, Premium-Pflegeprodukte und stilvolle Umkleiden – dein Finish nach jedem Workout.", image: "/images/studio/duschen.png", large: false },
+        { key: "recovery", label: "Leg Day Zone",    iconName: "Dumbbell",   tag: "Beinpresse · Hack Squat · Extensions", desc: "Leg Press, Hack Squat, Beinstrecker & -beuger, Waden-Maschinen – Don't Skip Leg Day.", image: "/images/studio/leg-day.png", large: false },
       ],
     } satisfies StudioZonesBlockData,
     fields: [
@@ -1590,25 +1590,25 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
         headlineNormal: "VIELE ATHLETEN.",
         headlineOutline: "EIN CLUB.",
         subtitle: "Heavy Machines. Bodybuilding. Powerlifting. Olympic Weightlifting. CrossFit. HYROX. Alles unter einem Dach – keine Kompromisse, nur Ergebnisse.",
-        pillar1Image: "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png",
+        pillar1Image: "/images/athletic/hero.png",
         pillar1Tag: "Bodybuilding · Muskelaufbau · Maschinen",
         pillar1Headline: "BUILT FOR BODYBUILDING",
         pillar1Desc: "Im Nice Athletic Club Göppingen trainierst du an Premium-Equipment von Eleiko, Gymleco, Nautilus, Flex Leverage, Body Masters und vieles mehr – von der Beinpresse bis zum Cable Crossover für maximalen Muskelaufbau.",
         pillar1Cta: "Athletic Area entdecken",
         pillar1Link: "/athletic-area",
-        pillar2Image: "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png",
+        pillar2Image: "/images/crossfit/hero.png",
         pillar2Tag: "CrossFit · HYROX · Functional Fitness",
         pillar2Headline: "CROSSFIT GÖPPINGEN",
         pillar2Desc: "CrossFit Göppingen im Nice Athletic Club: WODs, Olympic Lifting, Sled Pushes, Box Jumps & Kettlebell Swings – funktionelles Ganzkörpertraining für Kraft, Ausdauer und Athletik.",
         pillar2Cta: "CrossFit Zone entdecken",
         pillar2Link: "/crossfit-gp",
-        pillar3Image: "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png",
+        pillar3Image: "/images/hyrox/hero.png",
         pillar3Tag: "HYROX · Hybrid Fitness · Wettkampf",
         pillar3Headline: "HYROX",
         pillar3Desc: "HYROX im Nice Athletic Club Göppingen: 8 Stationen von SkiErg bis Wall Balls kombiniert mit Laufen – gezieltes Training für Open, Pro, Doubles & Relay.",
         pillar3Cta: "HYROX Zone entdecken",
         pillar3Link: "/hyrox",
-        pillar4Image: "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png",
+        pillar4Image: "/images/theke/theke-area.png",
         pillar4Tag: "Espresso · Whey Shakes · Protein Bars",
         pillar4Headline: "DIE NICE THEKE",
         pillar4Desc: "Lempresso aus der Siebträgermaschine, Whey Shakes, Protein Bars und mehr – dein Treffpunkt vor und nach dem Training.",
@@ -1673,7 +1673,7 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
       id: "studio-hero",
       type: "studio-hero",
       data: {
-        heroImage: "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png",
+        heroImage: "/images/studio/athletic-zone.png",
         label: "Nice Athletic Club Göppingen",
         headlineNormal: "DAS",
         headlineOutline: "STUDIO",
@@ -1694,12 +1694,12 @@ export const PAGE_INITIAL_BLOCKS: Record<string, PageBlock[]> = {
         headlineNormal: "SECHS ZONEN,",
         headlineOutline: "EIN CLUB",
         zones: [
-          { key: "athletic", label: "Athletic Area",    iconName: "Dumbbell",   tag: "Strength · Power · Olympic Lifting",   desc: "Vier vollausgestattete Power Racks, Eleiko-Olympia-Stangen, Technogym-Maschinen und eine Plattform speziell für olympisches Gewichtheben.", image: "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png", large: true,  link: "/athletic-area" },
-          { key: "crossfit", label: "CrossFit Zone",   iconName: "Zap",        tag: "Functional · Rig · Boxes",             desc: "Modulares Rig, Wall Balls, GHDs, Assault Bikes – alles für dein WOD.", image: "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png", large: false, link: "/crossfit-gp" },
-          { key: "cardio",   label: "Hyrox Zone",      iconName: "Zap",        tag: "Hyrox · Endurance · Competition",      desc: "Offizieller Hyrox Training Club – SkiErg, Sled Push & Pull, Wall Balls, Burpee Broad Jumps und Farmers Carry auf wettkampfnahem Parcours.", image: "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png", large: false, link: "/hyrox" },
-          { key: "combat",   label: "Theken Bereich",  iconName: "Coffee",     tag: "Shakes · Snacks · Community",          desc: "Protein-Shakes, frische Smoothies, Espresso, gesunde Snacks und Clear Whey – der perfekte Treffpunkt vor und nach dem Training.", image: "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png", large: false, link: "/nice-theke" },
-          { key: "wellness", label: "Premium Duschen", iconName: "ShowerHead", tag: "Regendusche · Terrazzo · Wellness",     desc: "Großzügige Regenduschen mit edlem Terrazzo-Design, Premium-Pflegeprodukte und stilvolle Umkleiden – dein Finish nach jedem Workout.", image: "figma:asset/f06118a1042cae64d2462baf0c816cd2aa82d64a.png", large: false },
-          { key: "recovery", label: "Leg Day Zone",    iconName: "Dumbbell",   tag: "Beinpresse · Hack Squat · Extensions", desc: "Leg Press, Hack Squat, Beinstrecker & -beuger, Waden-Maschinen – Don't Skip Leg Day.", image: "figma:asset/a75ed35fb9db584ac8784f61a27d15e2e55f72e9.png", large: false },
+          { key: "athletic", label: "Athletic Area",    iconName: "Dumbbell",   tag: "Strength · Power · Olympic Lifting",   desc: "Vier vollausgestattete Power Racks, Eleiko-Olympia-Stangen, Technogym-Maschinen und eine Plattform speziell für olympisches Gewichtheben.", image: "/images/studio/athletic-zone.png", large: true,  link: "/athletic-area" },
+          { key: "crossfit", label: "CrossFit Zone",   iconName: "Zap",        tag: "Functional · Rig · Boxes",             desc: "Modulares Rig, Wall Balls, GHDs, Assault Bikes – alles für dein WOD.", image: "/images/studio/crossfit-zone.png", large: false, link: "/crossfit-gp" },
+          { key: "cardio",   label: "Hyrox Zone",      iconName: "Zap",        tag: "Hyrox · Endurance · Competition",      desc: "Offizieller Hyrox Training Club – SkiErg, Sled Push & Pull, Wall Balls, Burpee Broad Jumps und Farmers Carry auf wettkampfnahem Parcours.", image: "/images/hyrox/hero.png", large: false, link: "/hyrox" },
+          { key: "combat",   label: "Theken Bereich",  iconName: "Coffee",     tag: "Shakes · Snacks · Community",          desc: "Protein-Shakes, frische Smoothies, Espresso, gesunde Snacks und Clear Whey – der perfekte Treffpunkt vor und nach dem Training.", image: "/images/theke/theke-area.png", large: false, link: "/nice-theke" },
+          { key: "wellness", label: "Premium Duschen", iconName: "ShowerHead", tag: "Regendusche · Terrazzo · Wellness",     desc: "Großzügige Regenduschen mit edlem Terrazzo-Design, Premium-Pflegeprodukte und stilvolle Umkleiden – dein Finish nach jedem Workout.", image: "/images/studio/duschen.png", large: false },
+          { key: "recovery", label: "Leg Day Zone",    iconName: "Dumbbell",   tag: "Beinpresse · Hack Squat · Extensions", desc: "Leg Press, Hack Squat, Beinstrecker & -beuger, Waden-Maschinen – Don't Skip Leg Day.", image: "/images/studio/leg-day.png", large: false },
         ],
       } satisfies StudioZonesBlockData,
     },
@@ -2007,6 +2007,45 @@ export function createBlock(type: BlockType): PageBlock {
     type,
     data: { ...BLOCK_REGISTRY[type].defaultData },
   };
+}
+
+export function migrateLegacyBlocks(blocks: PageBlock[]): PageBlock[] {
+  const result: PageBlock[] = [];
+  for (const block of blocks) {
+    if (block.type === "pricing") {
+      const data = block.data as PricingBlockData;
+      result.push({
+        id: block.id + "-cards",
+        type: "pricing-cards",
+        hidden: block.hidden,
+        data: {
+          heading: data.heading || "Unsere Tarife",
+          subheading: data.subheading || "",
+          selectedPlans: data.visiblePlans && data.visiblePlans.length > 0 ? data.visiblePlans : ["all"],
+        }
+      });
+      result.push({
+        id: block.id + "-addons",
+        type: "pricing-addons",
+        hidden: block.hidden,
+        data: {
+          heading: "Add-Ons",
+          subtitle: "Zusatzoptionen",
+        }
+      });
+      result.push({
+        id: block.id + "-compare",
+        type: "pricing-compare",
+        hidden: block.hidden,
+        data: {
+          heading: "Tarifvergleich",
+        }
+      });
+    } else {
+      result.push(block);
+    }
+  }
+  return result;
 }
 
 export { MEMBERSHIP_PLANS };

@@ -43,6 +43,7 @@ import {
   type RichTextBlockData,
   type ValuesGridBlockData,
   type TrustBadgesBlockData,
+  migrateLegacyBlocks,
 } from "../../data/blocks";
 
 // ── localStorage key ──────────────────────────────────────────────────────────
@@ -56,17 +57,17 @@ async function fetchPreiseBlocks(): Promise<PageBlock[]> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (Array.isArray(json?.blocks) && json.blocks.length > 0) {
-      return json.blocks as PageBlock[];
+      return migrateLegacyBlocks(json.blocks as PageBlock[]);
     }
   } catch { /* fall through */ }
   try {
     const saved = localStorage.getItem(LS_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as PageBlock[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return migrateLegacyBlocks(parsed);
     }
   } catch { /* fall through */ }
-  return PAGE_INITIAL_BLOCKS["preise"] ?? [];
+  return migrateLegacyBlocks(PAGE_INITIAL_BLOCKS["preise"] ?? []);
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -697,7 +698,26 @@ function PricingCardsSection({ data }: { data: PricingCardsBlockData }) {
   const all = pricingData?.plans ?? [];
   const sel = (data.selectedPlans ?? []) as string[];
   const plans = sel.length === 0 || sel.includes("all") ? all : all.filter((p) => sel.includes(p.slug));
-  return <PricingSection plans={plans} title={data.heading || "Unsere Tarife"} titleOutline="" subtitle="" />;
+  return (
+    <>
+      <PricingSection plans={plans} title={data.heading || "Unsere Tarife"} titleOutline="" subtitle={(data as any).subheading || ""} />
+      {(pricingData?.notices?.filter((n: any) => n.type === "contract")?.length ?? 0) > 0 && (
+        <section style={{ backgroundColor: "var(--surface-0)" }}>
+          <div className="max-w-6xl mx-auto px-5 sm:px-6 pb-8">
+            {pricingData!.notices.filter((n: any) => n.type === "contract").map((notice: any) => (
+              <div key={notice.id} className="px-4 sm:px-5 py-4 flex items-start gap-3" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="w-1 h-8 shrink-0" style={{ background: "var(--brand)" }} />
+                <div>
+                  <p style={{ fontFamily: "var(--font-condensed)", fontSize: "12px", fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,0.7)" }}>{notice.title.toUpperCase()}</p>
+                  <p className="text-white/40 text-sm leading-relaxed mt-1">{notice.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </>
+  );
 }
 
 // ── Pricing Addons Block (real API data, CMS-filtered) ───────────────────────
@@ -723,11 +743,14 @@ function PricingAddonsCmsBlock({ data }: { data: PricingAddonsBlockData }) {
       .filter(Boolean) as typeof addons;
   }
   return (
-    <PricingAddonsSection
-      addons={addons}
-      heading={data.heading || undefined}
-      subtitle={data.subtitle || undefined}
-    />
+    <>
+      <PricingAddonsSection
+        addons={addons}
+        heading={data.heading || undefined}
+        subtitle={data.subtitle || undefined}
+      />
+      <PricingNoticeBlock notices={pricingData?.notices?.filter((n: any) => n.type !== "contract") || []} plans={pricingData?.plans || []} />
+    </>
   );
 }
 
@@ -735,7 +758,18 @@ function PricingAddonsCmsBlock({ data }: { data: PricingAddonsBlockData }) {
 function PricingCompareCmsBlock({ data }: { data: PricingCompareBlockData }) {
   const { data: pricingData, loading } = usePricingData("preise");
   if (loading) return null;
-  return <PricingComparisonSection comparison={pricingData?.comparison ?? null} />;
+  return (
+    <>
+      <PricingComparisonSection comparison={pricingData?.comparison ?? null} />
+      {pricingData?.pros_cons?.enabled && (
+        <section className="pb-20" style={{ backgroundColor: "var(--surface-0)" }}>
+          <div className="max-w-6xl mx-auto px-5 sm:px-6">
+            <PricingProsConsSection prosCons={pricingData.pros_cons} />
+          </div>
+        </section>
+      )}
+    </>
+  );
 }
 
 // ── Rich Text (fallback) ──────────────────────────────────────────────────────
@@ -764,7 +798,6 @@ function renderBlock(block: PageBlock) {
   switch (block.type) {
     case "hero":            return <HeroSection        key={block.id} data={block.data as HeroBlockData} />;
     case "stats":           return <StatsSection       key={block.id} data={block.data as StatsBlockData} />;
-    case "pricing":         return <PricingBlock       key={block.id} data={block.data as PricingBlockData} />;
     case "pricing-cards":   return <PricingCardsSection   key={block.id} data={block.data as PricingCardsBlockData} />;
     case "pricing-addons":  return <PricingAddonsCmsBlock key={block.id} data={block.data as PricingAddonsBlockData} />;
     case "pricing-compare": return <PricingCompareCmsBlock key={block.id} data={block.data as PricingCompareBlockData} />;

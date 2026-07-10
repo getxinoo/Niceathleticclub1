@@ -39,6 +39,7 @@ import {
   type FieldSchema,
 } from "../../../data/blocks";
 import { classifyLinkInput, validateLink } from "../../../lib/links";
+import { PricingDomainEditor } from "./PricingDomainEditor";
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
 const ICON_MAP: Record<
@@ -1216,6 +1217,9 @@ export function BlockSettingsSheet({
                   onChange={(v) => handleFieldChange(field.key, v)}
                 />
               ))}
+
+              {/* Domain Editor für Pricing */}
+              {block && <PricingDomainEditor blockType={block.type} />}
             </div>
 
             {/* ── Footer actions ───────────────────────────────────────────── */}
