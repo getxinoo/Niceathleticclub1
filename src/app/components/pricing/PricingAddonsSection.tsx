@@ -7,10 +7,14 @@ import type { PublicAddon } from "../../../lib/pricing-types";
 
 interface Props {
   addons: PublicAddon[];
+  /** Optional CMS heading override. Undefined → renders the fixed design heading. */
+  heading?: string;
+  /** Optional CMS subtitle override. Undefined → renders the fixed design subtitle. */
+  subtitle?: string;
   className?: string;
 }
 
-export function PricingAddonsSection({ addons, className = "" }: Props) {
+export function PricingAddonsSection({ addons, heading, subtitle, className = "" }: Props) {
   if (!addons.length) return null;
 
   const sorted = [...addons].sort((a, b) => a.sort_order - b.sort_order);
@@ -47,19 +51,23 @@ export function PricingAddonsSection({ addons, className = "" }: Props) {
               letterSpacing: "0.02em",
             }}
           >
-            ADD-ONS ZU DEN{" "}
-            <span
-              style={{
-                WebkitTextStroke: "2px rgba(240,240,240,0.7)",
-                color: "transparent",
-              }}
-            >
-              ATHLETIC
-            </span>{" "}
-            TARIFEN
+            {heading ?? (
+              <>
+                ADD-ONS ZU DEN{" "}
+                <span
+                  style={{
+                    WebkitTextStroke: "2px rgba(240,240,240,0.7)",
+                    color: "transparent",
+                  }}
+                >
+                  ATHLETIC
+                </span>{" "}
+                TARIFEN
+              </>
+            )}
           </h2>
           <p className="text-white/35 text-sm mt-2">
-            Werden auf den Grundpreis aufgerechnet
+            {subtitle ?? "Werden auf den Grundpreis aufgerechnet"}
           </p>
         </motion.div>
 
