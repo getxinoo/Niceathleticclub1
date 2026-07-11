@@ -170,7 +170,10 @@ function PillarsBlock({ d }: { d: PillarsBlockData }) {
           </h2>
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: "14px", maxWidth: 640, margin: "20px auto 0", lineHeight: 1.7 }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 2 }}>
+        {/* Responsive statt repeat(4,1fr): feste 1fr-Tracks schrumpfen nicht
+            unter ihre Inhaltsbreite und sprengen die 390px-Editor-Vorschau.
+            Desktop (lg) bleibt wie gehabt vierspaltig. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: 2 }}>
           {p.map((x) => (
             <div key={x.hl} style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
               <img src={x.i} alt={x.hl} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
@@ -334,7 +337,8 @@ function ReviewsBlock({ d }: { d: ReviewsBlockData }) {
     <section style={{ background: S, padding: P96 }}>
       <div style={W1280}>
         {d.heading && <H2 t={d.heading} mb={48} />}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        {/* Responsive statt repeat(3,1fr) — Desktop (lg) bleibt dreispaltig. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" style={{ gap: 16 }}>
           {items.slice(0, 6).map((r, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
               <div style={{ display: "flex", gap: 3, marginBottom: 12 }}>
@@ -438,6 +442,14 @@ function FaqBlock({ d }: { d: FaqBlockData }) {
 }
 
 function ValuesGridBlock({ d }: { d: ValuesGridBlockData }) {
+  // Responsive Spalten statt repeat(min(n,3),1fr): Desktop-Design bleibt
+  // erhalten (1/2/3 Spalten je nach Anzahl), aber mobil (390px) wird immer
+  // einspaltig umgebrochen statt die Editor-Vorschau zu sprengen.
+  const n = (d.values || []).length;
+  const cols =
+    n <= 1 ? "grid-cols-1"
+    : n === 2 ? "grid-cols-1 sm:grid-cols-2"
+    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
   return (
     <section style={{ background: S, padding: P96 }}>
       <div style={W1280}>
@@ -445,7 +457,7 @@ function ValuesGridBlock({ d }: { d: ValuesGridBlockData }) {
           {d.heading && <H2 t={d.heading} mb={12} />}
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: "14px", maxWidth: 560, margin: "0 auto" }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min((d.values || []).length, 3)},1fr)`, gap: 16 }}>
+        <div className={`grid ${cols}`} style={{ gap: 16 }}>
           {(d.values || []).map((v, i) => {
             const Icon = ICONS[v.icon] ?? Heart;
             return (
