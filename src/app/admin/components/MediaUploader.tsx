@@ -8,6 +8,7 @@
  */
 import { useState, useRef, useCallback } from "react";
 import { Upload, Link2, X, Image as ImageIcon, AlertCircle, RefreshCw, Trash2 } from "lucide-react";
+import { BASE_URL } from "../../../lib/api-service";
 
 const ACCEPTED = ".png,.jpg,.jpeg,.webp";
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -76,7 +77,7 @@ export function MediaUploader({
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
 
-      const res = await fetch("https://nicefitness.de/api/media/upload.php", {
+      const res = await fetch(`${BASE_URL}/media/upload.php`, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,

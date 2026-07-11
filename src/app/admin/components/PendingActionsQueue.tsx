@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "../../context/AuthContext";
 import { P } from "../../../lib/permissions";
+import { BASE_URL } from "../../../lib/api-service";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PendingAction {
@@ -59,7 +60,7 @@ export function PendingActionsQueue() {
     setError(null);
     try {
       const token = localStorage.getItem("nac_auth_token");
-      const res = await fetch("https://nicefitness.de/api/admin/workflow_tasks.php?status=open", {
+      const res = await fetch(`${BASE_URL}/admin/workflow_tasks.php?status=open`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
