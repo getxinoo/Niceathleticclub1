@@ -28,7 +28,7 @@ switch ($method) {
     case 'GET':
         // GET erfordert Auth → leitet an admin/bookings.php weiter
         // Alternativ: Hier direkt Admin-List implementieren
-        $user = require_auth();
+        require_permission('bookings.read'); // P1 Security-Hotfix (Gast-POST bleibt öffentlich)
         list_all_bookings();
         break;
 

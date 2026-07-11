@@ -14,6 +14,17 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? null;
 $db     = db();
 
+// ── Authorization (P1 Security-Hotfix): Member-API ist Staff-only, pro Aktion ──
+// Zuvor nur require_auth() → jedes eingeloggte Mitglied konnte ALLE Mitglieder
+// lesen/ändern/anlegen. Jetzt permissionbasiert (Admin behält Vollzugriff).
+if ($method === 'GET') {
+    require_permission('members.read');
+} elseif ($method === 'DELETE' || $action === 'block' || $action === 'unblock') {
+    require_permission('members.block');
+} else {
+    require_permission('members.write');
+}
+
 // ── Helper: Spalten der members-Tabelle laden (SHOW COLUMNS, kein INFORMATION_SCHEMA) ──
 function get_member_columns(PDO $db): array
 {

@@ -19,6 +19,14 @@ $user   = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
+// ── Authorization (P1 Security-Hotfix): Admin-Buchungsverwaltung ist Staff-only ─
+// Lesen → bookings.read, Ändern/Löschen → bookings.write (Member → 403).
+if ($method === 'GET') {
+    require_permission('bookings.read');
+} else {
+    require_permission('bookings.write');
+}
+
 switch ($method) {
     case 'GET':
         list_bookings();

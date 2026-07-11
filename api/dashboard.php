@@ -12,6 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     json_error('Methode nicht erlaubt.', 405);
 }
 
+// ── Authorization (P1 Security-Hotfix) ───────────────────────────────────────
+// Zuvor war dieses Endpoint komplett offen (Business-KPIs ohne Anmeldung).
+// Jetzt: nur authentifizierte Staff mit dashboard.view (Member erhält 403).
+require_permission('dashboard.view');
+
 $pdo = db();
 
 // ── Neue Leads (letzte 7 Tage) ────────────────────────────────────────────────

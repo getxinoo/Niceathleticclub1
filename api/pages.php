@@ -37,34 +37,34 @@ switch ($method) {
     case 'GET':
         if ($slug !== null && $slug !== '') {
             if ($isAdminReq) {
-                require_auth();
+                require_permission('cms.manage'); // P1 Security-Hotfix: CMS-Publish/Admin-Read = cms.manage
                 $action === 'blocks' ? get_page_blocks($slug, true) : get_page($slug, true);
             } else {
                 $action === 'blocks' ? get_page_blocks($slug, false) : get_page($slug, false);
             }
         } else {
             if ($isAdminReq) {
-                require_auth();
+                require_permission('cms.manage'); // P1 Security-Hotfix: CMS-Publish/Admin-Read = cms.manage
             }
             list_pages();
         }
         break;
 
     case 'PUT':
-        require_auth();
+        require_permission('cms.manage'); // P1 Security-Hotfix: CMS-Publish/Admin-Read = cms.manage
         if ($slug === null || $slug === '') json_error('Parameter "slug" fehlt.');
         save_page_blocks($slug, $body ?? []);
         break;
 
     case 'PATCH':
-        require_auth();
+        require_permission('cms.manage'); // P1 Security-Hotfix: CMS-Publish/Admin-Read = cms.manage
         if ($slug === null || $slug === '') json_error('Parameter "slug" fehlt.');
         update_page_meta($slug, $body ?? []);
         break;
 
     case 'DELETE':
         // Auth immer zuerst pruefen (auch wenn Loeschen aktuell nicht unterstuetzt wird).
-        require_auth();
+        require_permission('cms.manage'); // P1 Security-Hotfix: CMS-Publish/Admin-Read = cms.manage
         json_error('Loeschen von Seiten wird nicht unterstuetzt.', 405);
         break;
 
