@@ -99,6 +99,19 @@ It was **empty** at audit (SEPA encryption never armed). Set a fresh 64-hex key 
 ## L) Staff/user passwords from the dump
 The dump exposed `users` password *hashes*. Force a password reset for every staff account that existed at dump time (Admin → Users). Members authenticate via the same users table — if member counts are small, reset those too; otherwise prioritize all staff/admin roles.
 
+## M) Dev-mock login passwords (burned via public frontend bundle)
+The two `DEV_MOCK_ACCOUNTS` passwords hardcoded in `src/app/context/AuthContext.tsx`
+(for `admin@niceathleticclub.de` and `info@xinoo.io`) shipped in plaintext in the
+public production JS bundle and must be treated as **burned**. Since the
+`fix(security)` commit they are `import.meta.env.DEV`-gated and no longer reach
+`dist/` (predeploy check E enforces this), and the backend never accepted the mock
+tokens they produce — the remaining risk is **reuse**:
+1. If either password is (or ever was) also used for a *real* account — the real
+   admin login, mail, hosting, anything — rotate it there immediately.
+2. Never reuse these strings anywhere again.
+3. Optional hardening: replace them in source with obviously fake dev-only values
+   (e.g. `dev-password-not-a-secret`) — they remain in git history and dev bundles.
+
 ---
 
 ## What Tobias must NEVER paste/share (also not "just once, to check")
