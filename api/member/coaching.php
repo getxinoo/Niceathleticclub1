@@ -17,10 +17,16 @@ $pdo = db();
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
-// TODO: Extract member_id from JWT token
-// For now, accept it from request body/query
+// ── Authorization (P1 Security-Hotfix): Identität NUR aus JWT/Session ─────────
+// Zuvor IDOR: member_id kam aus Query/Body – jedes Mitglied konnte fremde
+// Coaching-Daten lesen/ändern. Jetzt ist die member_id aus dem Token
+// verbindlich; ein clientseitig gesendetes member_id wird ignoriert.
+$user     = require_auth();
+$memberId = isset($user['member_id']) ? (int) $user['member_id'] : 0;
+if ($memberId <= 0) {
+    json_error('Nur für Mitglieder.', 403);
+}
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
-$memberId = $input['member_id'] ?? $_GET['member_id'] ?? null;
 
 // ── GET: Eigene Requests laden ────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($action)) {
@@ -106,9 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'toggle_item' && $id) {
         exit;
     }
     
-    // Get plan_id from request
-    $reqStmt = $pdo->prepare("SELECT plan_id FROM coaching_requests WHERE id = ?");
-    $reqStmt->execute([$id]);
+    // Get plan_id from request — scoped to the authenticated member (kein IDOR)
+    $reqStmt = $pdo->prepare("SELECT plan_id FROM coaching_requests WHERE id = ? AND member_id = ?");
+    $reqStmt->execute([$id, $memberId]);
     $request = $reqStmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$request || !$request['plan_id']) {

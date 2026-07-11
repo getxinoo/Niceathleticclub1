@@ -18,6 +18,17 @@ $pdo = db();
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
+// ── Authorization (P1 Security-Hotfix) ───────────────────────────────────────
+// Zuvor offen: gesamte Coaching-Pipeline ohne Anmeldung. Jetzt rollenbasiert:
+// Lesen → coaching.read, Trainer zuweisen → coaching.assign, sonst coaching.write.
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_permission('coaching.read');
+} elseif ($action === 'assign') {
+    require_permission('coaching.assign');
+} else {
+    require_permission('coaching.write');
+}
+
 // ── GET: Alle Coaching-Requests laden ─────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($action)) {
     $stmt = $pdo->query("
