@@ -33,6 +33,11 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? null;
 $db     = db();
 
+// Alle Onboarding-Aktionen sind POST-only (Diagnostics erwartet GET → 405)
+if ($method !== 'POST') {
+    json_error('Methode nicht erlaubt. Nur POST.', 405);
+}
+
 // ── Helper: Firmen-E-Mail generieren ─────────────────────────────────────────
 function generate_company_email(string $first, string $last): string
 {
@@ -163,6 +168,10 @@ function log_audit_onboard(string $action_name, string $entity_id, array $detail
 // POST ?action=check_email – Verfuegbare Firmen-E-Mail pruefen
 // =============================================================================
 if ($method === 'POST' && $action === 'check_email') {
+    // Teil des Staff-Anlage-Flows: ohne team.manage keine E-Mail-Enumeration
+    // (Admin hat implizit alle Rechte, HR hat team.manage per Default-Rolle).
+    require_permission('team.manage');
+
     $body = get_body();
     $first = trim($body['first_name'] ?? '');
     $last  = trim($body['last_name'] ?? '');
@@ -180,10 +189,11 @@ if ($method === 'POST' && $action === 'check_email') {
 // POST – Onboarding ausfuehren
 // =============================================================================
 if ($method === 'POST' && !$action) {
-    $admin = require_auth();
-    if (!in_array($admin['role'] ?? '', ['admin', 'hr'])) {
-        json_error('Nur Admin/HR duerfen Onboarding durchfuehren.', 403);
-    }
+    // Staff-/Account-Anlage: Permission statt hartkodierter Rollenliste.
+    // team.manage = "Mitarbeiter anlegen und deaktivieren" (RBAC-Framework):
+    // Admin passiert immer, HR per Default-Rolle, User-Overrides (grant/revoke)
+    // aus user_permissions werden respektiert. Member erhalten 403.
+    $admin = require_permission('team.manage');
 
     $body = get_body();
     $applicantId = (int) ($body['applicant_id'] ?? 0);
@@ -323,6 +333,11 @@ if ($method === 'POST' && !$action) {
 // POST ?action=change_password – Erst-Login Passwort-Aenderung
 // =============================================================================
 if ($method === 'POST' && $action === 'change_password') {
+    // Self-Service: bewusst NUR require_auth(), KEINE Admin-Permission.
+    // Der Ziel-User kommt ausschliesslich aus dem Session-Token ($user['sub']) —
+    // es gibt keinen Request-Parameter, um das Passwort eines anderen Users zu
+    // setzen. Erst-Login (must_change_pw=1, temp_password_hash) und normale
+    // eigene Passwort-Aenderung laufen beide ueber diesen Pfad.
     $user = require_auth();
     $body = get_body();
     $newPassword = $body['new_password'] ?? '';
