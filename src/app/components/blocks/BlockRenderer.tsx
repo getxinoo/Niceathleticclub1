@@ -31,6 +31,7 @@ import { MOCK_REVIEWS } from "../../../data/reviews";
 // keinen Zirkelbezug. Preise.tsx (Live-Frontend) verwendet exakt dieselbe
 // Komponente + denselben Hook.
 import { usePricingData } from "../../../lib/use-pricing";
+import { applyAddonsConfig } from "../../../lib/addons-config";
 import { StudioHeroSection, StudioZonesSection, StudioInfoSection } from "../../pages/Studio";
 import { PricingAddonsSection, PricingSection, PricingComparisonSection } from "../pricing";
 import { TeamGridSection } from "../../pages/Team";
@@ -194,13 +195,22 @@ function StatsBlock({ d }: { d: StatsBlockData }) {
     const dd = d as Record<string, unknown>;
     return { icon: dd[`item${n}Icon`] as string, value: dd[`item${n}Value`] as string, label: dd[`item${n}Label`] as string };
   }).filter((x) => x.value);
+  // Responsive Spalten – exakt wie die öffentliche StatsSection (Preise.tsx):
+  // auf 390px NIE vier feste Spalten (das sprengte die mobile Editor-Vorschau,
+  // weil `repeat(4,1fr)`-Tracks mit `min-width:auto` nicht unter ihre
+  // Inhaltsbreite schrumpfen). Trenner nur ab `sm`, damit der 2-Spalten-Umbruch
+  // mobil keine Reststriche zeigt.
+  const cols =
+    items.length === 4 ? "grid-cols-2 sm:grid-cols-4"
+    : items.length === 3 ? "grid-cols-3"
+    : "grid-cols-2";
   return (
     <section style={{ background: S, borderTop: "1px solid rgba(255,255,255,.04)", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
-      <div style={{ ...W1280, display: "grid", gridTemplateColumns: `repeat(${items.length},1fr)` }}>
+      <div className={`grid ${cols}`} style={{ ...W1280 }}>
         {items.map((it, i) => {
           const Icon = ICONS[it.icon] ?? Zap;
           return (
-            <div key={i} style={{ padding: "48px 24px", textAlign: "center", borderRight: i < items.length - 1 ? "1px solid rgba(255,255,255,.06)" : "none" }}>
+            <div key={i} className={i < items.length - 1 ? "border-white/[0.06] sm:border-r" : undefined} style={{ padding: "48px 24px", textAlign: "center" }}>
               <Icon size={20} style={{ color: "var(--brand)", marginBottom: 12 }} />
               <p style={{ fontFamily: "var(--font-display)", fontSize: "2.4rem", color: "white", margin: "0 0 6px", letterSpacing: "0.02em" }}>{it.value}</p>
               <p style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,.4)", textTransform: "uppercase" }}>{it.label}</p>
@@ -281,10 +291,13 @@ function PricingCardsBlock({ d }: { d: PricingCardsBlockData }) {
 function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
   const { data, loading } = usePricingData("preise");
   if (loading) return <Spinner />;
-  let addons = data?.addons ?? [];
+  // Identischer Merge wie die öffentliche /preise-Seite (applyAddonsConfig) –
+  // Desktop- und Mobile-Vorschau rendern damit exakt das Live-Layout.
+  // Legacy-Blockdaten (selectedAddonSlugs/hiddenAddonSlugs) bleiben wirksam.
+  let addons = applyAddonsConfig(data?.addons ?? [], d);
   const sel = (d as unknown as Record<string, unknown>).selectedAddonSlugs as string[] | undefined;
   const hidden = (d as unknown as Record<string, unknown>).hiddenAddonSlugs as string[] | undefined;
-  if (sel && sel.length > 0) {
+  if ((!d.addonsConfig || d.addonsConfig.length === 0) && sel && sel.length > 0) {
     addons = sel.map((slug) => addons.find((a) => a.slug === slug)).filter(Boolean) as typeof addons;
   }
   if (hidden && hidden.length > 0) {
@@ -295,6 +308,8 @@ function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
       addons={addons}
       heading={d.heading || undefined}
       subtitle={d.subtitle || undefined}
+      grid={d.grid}
+      calculation={d.calculation}
     />
   );
 }
@@ -457,7 +472,7 @@ function FeaturesListBlock({ d }: { d: FeaturesListBlockData }) {
           {d.heading && <H2 t={d.heading} mb={12} />}
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: 14, maxWidth: 560, margin: "0 auto" }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: d.layout === "grid" ? "repeat(3,1fr)" : "1fr", gap: 16 }}>
+        <div className={d.layout === "grid" ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 grid-cols-1"}>
           {(d.features || []).map((f, i) => {
             const Icon = ICONS[f.icon] ?? CheckCircle2;
             return (
