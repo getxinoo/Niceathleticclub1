@@ -79,32 +79,36 @@ const AuthContext = createContext<AuthContextType>(defaultAuthContext);
 
 // ── Dev-Only Mock Accounts ────────────────────────────────────────────────────
 // Nur aktiv wenn API nicht erreichbar UND wir in dev-Umgebung sind.
-const DEV_MOCK_ACCOUNTS: { email: string; password: string; user: AuthUser }[] = [
-  {
-    email: 'admin@niceathleticclub.de',
-    password: 'NACAdmin2026!',
-    user: {
-      id: 'dev-admin-1',
-      name: 'NAC Admin',
-      email: 'admin@niceathleticclub.de',
-      role: 'admin',
-      is_blocked: false,
-      must_change_pw: false,
-    },
-  },
-  {
-    email: 'info@xinoo.io',
-    password: 'Milow2025!',
-    user: {
-      id: 'dev-admin-2',
-      name: 'Xinoo Dev',
-      email: 'info@xinoo.io',
-      role: 'admin',
-      is_blocked: false,
-      must_change_pw: false,
-    },
-  },
-];
+// import.meta.env.DEV wird von Vite im Prod-Build durch `false` ersetzt →
+// Accounts (inkl. Passwörter) werden per Dead-Code-Elimination aus dem Bundle entfernt.
+const DEV_MOCK_ACCOUNTS: { email: string; password: string; user: AuthUser }[] = import.meta.env.DEV
+  ? [
+      {
+        email: 'admin@niceathleticclub.de',
+        password: 'NACAdmin2026!',
+        user: {
+          id: 'dev-admin-1',
+          name: 'NAC Admin',
+          email: 'admin@niceathleticclub.de',
+          role: 'admin',
+          is_blocked: false,
+          must_change_pw: false,
+        },
+      },
+      {
+        email: 'info@xinoo.io',
+        password: 'Milow2025!',
+        user: {
+          id: 'dev-admin-2',
+          name: 'Xinoo Dev',
+          email: 'info@xinoo.io',
+          role: 'admin',
+          is_blocked: false,
+          must_change_pw: false,
+        },
+      },
+    ]
+  : [];
 
 // ── Storage Keys ──────────────────────────────────────────────────────────────
 const TOKEN_KEY = 'nac_auth_token';
@@ -185,30 +189,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(USER_KEY, JSON.stringify(res.user));
       setUser(res.user as AuthUser);
     } catch (err) {
-      // Dev-only fallback: nur bei Netzwerkfehler oder Server-Down
-      const isNetworkError = err instanceof ApiError && err.status === 0;
-      const isServerError = err instanceof ApiError && (err.status >= 500 || err.status === 404);
+      // Dev-only fallback: nur bei Netzwerkfehler oder Server-Down.
+      // In Produktion (import.meta.env.DEV === false) existiert dieser Pfad nicht.
+      if (import.meta.env.DEV) {
+        const isNetworkError = err instanceof ApiError && err.status === 0;
+        const isServerError = err instanceof ApiError && (err.status >= 500 || err.status === 404);
 
-      if (isNetworkError || isServerError) {
-        const match = DEV_MOCK_ACCOUNTS.find(
-          (a) => a.email.toLowerCase() === creds.email.toLowerCase() && a.password === creds.password,
-        );
-        if (match) {
-          const token = 'dev-mock-' + Date.now();
-          localStorage.setItem(TOKEN_KEY, token);
-          localStorage.setItem(USER_KEY, JSON.stringify(match.user));
-          setUser(match.user);
-          console.warn(
-            '%c[NAC Auth] API nicht erreichbar – Dev-Mock-Login. NICHT für Produktion!',
-            'color:#F59E0B;font-weight:bold',
+        if (isNetworkError || isServerError) {
+          const match = DEV_MOCK_ACCOUNTS.find(
+            (a) => a.email.toLowerCase() === creds.email.toLowerCase() && a.password === creds.password,
           );
-          return;
+          if (match) {
+            const token = 'dev-mock-' + Date.now();
+            localStorage.setItem(TOKEN_KEY, token);
+            localStorage.setItem(USER_KEY, JSON.stringify(match.user));
+            setUser(match.user);
+            console.warn(
+              '%c[NAC Auth] API nicht erreichbar – Dev-Mock-Login. NICHT für Produktion!',
+              'color:#F59E0B;font-weight:bold',
+            );
+            return;
+          }
+          // Keine bekannte Dev-E-Mail → hilfreicher Hinweis für die Preview
+          throw new Error(
+            'Server nicht erreichbar (Vorschau-Modus). ' +
+            'Nutze admin@niceathleticclub.de oder info@xinoo.io mit beliebigem Passwort.'
+          );
         }
-        // Keine bekannte Dev-E-Mail → hilfreicher Hinweis für die Preview
-        throw new Error(
-          'Server nicht erreichbar (Vorschau-Modus). ' +
-          'Nutze admin@niceathleticclub.de oder info@xinoo.io mit beliebigem Passwort.'
-        );
       }
       throw err;
     }

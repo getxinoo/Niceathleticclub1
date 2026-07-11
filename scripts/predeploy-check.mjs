@@ -31,6 +31,7 @@
  *   F (FAIL) a /images/... path referenced anywhere in dist text does not
  *            exist as a file in dist (broken canonical reference)
  *   G (FAIL) literal empty/undefined/null img-src patterns in dist text
+ *   H (FAIL) dev-mock login credentials present in dist (DEV gate broken)
  *
  * USAGE:  npm run build && npm run predeploy:check
  */
@@ -118,14 +119,21 @@ async function main() {
   const distFiles = await walk(DIST);
   const textExt = /\.(js|css|html|json|map|txt|xml|svg)$/i;
 
-  // A + D + E + F + G: scan dist text for incident signature, Unsplash count,
-  // raw unresolved asset strings, referenced /images/-paths and broken src
-  // literals. FIGMA_NEEDLE is composed dynamically so this script (and any
-  // future copy of the pattern) can never satisfy its own gate by accident.
+  // A + D + E + F + G + H: scan dist text for incident signature, Unsplash count,
+  // raw unresolved asset strings, referenced /images/-paths, broken src literals
+  // and leaked dev-mock credentials. FIGMA_NEEDLE is composed dynamically so this
+  // script (and any future copy of the pattern) can never satisfy its own gate by
+  // accident.
   const incidentRe = /figma:asset\/[0-9a-f]{40}\.png"\s*:\s*"[^"]*unsplash[^"]*"/i;
   const FIGMA_NEEDLE = ['figma', 'asset/'].join(':');
   const imgRefRe = /\/images\/[A-Za-z0-9_\-./]+?\.(?:png|jpe?g|webp|svg|gif)/g;
   const badSrcRes = [/src=""/, /src="undefined"/, /src="null"/, /src:\s*"undefined"/, /src:\s*"null"/];
+  // H: dev-mock credentials must NEVER reach a production bundle. These are the
+  // (burned, rotation pending) DEV_MOCK_ACCOUNTS passwords from AuthContext.tsx /
+  // api-service.ts, which are import.meta.env.DEV-gated and must be dead-code-
+  // eliminated by `vite build`. Split literals so this script itself never
+  // contains the greppable secrets.
+  const FORBIDDEN_SECRETS = ['NACAdmin' + '2026!', 'Milow' + '2025!'];
   let unsplashCount = 0;
   let figmaRawCount = 0;
   let scanned = 0;
@@ -150,6 +158,13 @@ async function main() {
     for (const re of badSrcRes) {
       if (re.test(content)) {
         fail(`Broken src literal (${re.source}) in ${f.replace(DIST, 'dist')}`);
+      }
+    }
+    // H: dev-mock credential strings must never appear in a production bundle
+    for (const secret of FORBIDDEN_SECRETS) {
+      if (content.includes(secret)) {
+        fail(`DEV-MOCK CREDENTIAL "${secret.slice(0, 4)}…" leaked into ${f.replace(DIST, 'dist')} ` +
+          `— import.meta.env.DEV gate is broken. NEVER deploy this build.`);
       }
     }
   }
@@ -196,6 +211,7 @@ async function main() {
   console.log(`   figma:asset → Unsplash mappings: ${failures.filter(f => f.includes('INCIDENT')).length} (must be 0)`);
   console.log(`   raw ${FIGMA_NEEDLE} strings in dist: ${figmaRawCount} (must be 0)`);
   console.log(`   images.unsplash.com count:       ${unsplashCount} (baseline ${UNSPLASH_BASELINE})`);
+  console.log(`   dev-mock credential leaks:       ${failures.filter(f => f.includes('DEV-MOCK')).length} (must be 0)`);
   console.log(`   required images checked:         ${REQUIRED_IMAGES.length} (× public + dist)`);
   console.log(`   referenced /images/ paths:       ${referencedImages.size} (${missingRefCount} missing)`);
 

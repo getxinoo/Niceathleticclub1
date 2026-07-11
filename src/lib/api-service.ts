@@ -927,9 +927,11 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       if (ep === "/login") {
-        // Im Mock-Modus: Credentials gegen bekannte Dev-Accounts prüfen.
+        // Mock-Login ist strikt dev-only: Im Prod-Build ersetzt Vite
+        // import.meta.env.DEV durch `false` und entfernt den ganzen Block
+        // (inkl. Dev-Account-Liste) per Dead-Code-Elimination.
         // Im Preview/Offline-Modus reicht Email-Match – Passwort wird nur vom echten PHP-Backend geprüft.
-        if (body) {
+        if (import.meta.env.DEV && body) {
           try {
             const creds = JSON.parse(body) as { email?: string };
             const DEV_ACCOUNTS = [
