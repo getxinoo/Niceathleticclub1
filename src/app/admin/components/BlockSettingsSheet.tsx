@@ -874,6 +874,35 @@ function FieldRow({
         />
       )}
 
+      {/* ── group (verschachteltes Objekt, z. B. Raster/Beispielrechnung) ─────── */}
+      {field.type === "group" && (
+        <div
+          className="flex flex-col gap-4"
+          style={{
+            padding: "12px",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderLeft: "2px solid rgba(202,12,133,0.35)",
+            borderRadius: "3px",
+          }}
+        >
+          {field.subFields?.map((sf) => {
+            const obj = (value && typeof value === "object" && !Array.isArray(value))
+              ? (value as Record<string, unknown>)
+              : {};
+            return (
+              <FieldRow
+                key={sf.key}
+                field={sf}
+                value={obj[sf.key]}
+                onChange={(v) => onChange({ ...obj, [sf.key]: v })}
+                blockData={blockData}
+              />
+            );
+          })}
+        </div>
+      )}
+
       {/* ── repeater ──────────────────────────────────────────────────────────── */}
       {field.type === "repeater" && (
         <RepeaterField
@@ -997,7 +1026,7 @@ function RepeaterField({
   const buildEmpty = (): Record<string, unknown> => {
     const obj: Record<string, unknown> = { _id: nextId() };
     field.subFields?.forEach((sf) => {
-      if (sf.type === "toggle") obj[sf.key] = true; // new rows default to visible
+      if (sf.type === "toggle") obj[sf.key] = sf.toggleDefault ?? false; // "visible" fields set toggleDefault:true
       else if (sf.type === "number") obj[sf.key] = sf.min ?? 0;
       else if (sf.type === "multiselect") obj[sf.key] = [];
       else if (sf.type === "repeater") obj[sf.key] = []; // nested list starts empty

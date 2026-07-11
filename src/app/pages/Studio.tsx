@@ -36,7 +36,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageMeta } from "../components/seo/PageMeta";
-import { BASE_URL } from "../../lib/api-service";
+import { fetchPublishedBlocks } from "../../lib/public-blocks";
 import {
   PAGE_INITIAL_BLOCKS,
   type PageBlock,
@@ -72,28 +72,11 @@ export function resolveStudioIcon(name: string): LucideIcon {
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
+// Öffentliche Priorität: veröffentlichte API-Blöcke → Seed nur bei wirklich
+// fehlender Seite. NIE localStorage (Browser-Entwürfe sind Editor-intern).
 async function fetchStudioBlocks(): Promise<PageBlock[]> {
-  // 1. Try PHP API (production)
-  try {
-    const res = await fetch(`${BASE_URL}/pages.php?slug=studio`, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (Array.isArray(json?.blocks) && json.blocks.length > 0) {
-      return json.blocks as PageBlock[];
-    }
-  } catch { /* fall through */ }
-  // 2. Admin edits saved by PageEditor (localStorage)
-  try {
-    const saved = localStorage.getItem("nac_blocks_studio");
-    if (saved) {
-      const parsed = JSON.parse(saved) as PageBlock[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch { /* fall through */ }
-  // 3. Seed data
-  return PAGE_INITIAL_BLOCKS["studio"];
+  const { blocks } = await fetchPublishedBlocks("studio", PAGE_INITIAL_BLOCKS["studio"] ?? []);
+  return blocks;
 }
 
 // ── Animation helpers ─────────────────────────────────────────────────────────
@@ -985,41 +968,24 @@ export function StudioInfoSection({ data }: { data: StudioInfoBlockData }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Studio() {
   const reduced = useReducedMotion();
-  const [blocks, setBlocks] = useState<PageBlock[]>(() => {
-    try {
-      const saved = localStorage.getItem("nac_blocks_studio");
-      if (saved) {
-        const parsed = JSON.parse(saved) as PageBlock[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return PAGE_INITIAL_BLOCKS["studio"] ?? [];
-  });
+  // Startzustand = Seed; die veröffentlichten API-Blöcke ersetzen ihn nach dem
+  // Fetch. Öffentliche Seiten lesen bewusst KEIN localStorage (Entwürfe sind
+  // Editor-intern) – siehe lib/public-blocks.ts.
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => PAGE_INITIAL_BLOCKS["studio"] ?? []);
 
   useEffect(() => {
     fetchStudioBlocks().then(setBlocks);
   }, []);
 
-  // Live-Sync: Admin speichert im PageEditor → sofort neu laden
+  // Live-Sync: Nach „Veröffentlichen“ im PageEditor → veröffentlichte Blöcke
+  // neu von der API laden (Event ist nur ein Refetch-Signal, keine Datenquelle).
   useEffect(() => {
     const onAdminSave = (e: Event) => {
       const detail = (e as CustomEvent<{ slug: string }>).detail;
       if (detail?.slug === "studio") fetchStudioBlocks().then(setBlocks);
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "nac_blocks_studio" && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue) as PageBlock[];
-          if (Array.isArray(parsed)) setBlocks(parsed);
-        } catch { /* ignore */ }
-      }
-    };
     window.addEventListener("nac-page-updated", onAdminSave);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("nac-page-updated", onAdminSave);
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("nac-page-updated", onAdminSave);
   }, []);
 
   return (

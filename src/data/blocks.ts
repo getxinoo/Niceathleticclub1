@@ -219,12 +219,42 @@ export interface CmsRepeaterItem {
 
 export interface CmsAddonRepeaterItem extends CmsRepeaterItem {
   optionsConfig?: CmsRepeaterItem[];
+  /** Custom-Grid-Slot 1–6 (0/undefined = automatische Platzierung). */
+  slot?: number;
+}
+
+// ── Add-ons: Grid- und Beispielrechnungs-Konfiguration (CMS-Layout-Daten) ────
+export interface AddonGridConfig {
+  /** "auto" (Default, wie bisher 2-spaltig) oder "custom" (6-Slot-Raster). */
+  mode?: "auto" | "custom";
+  /** Spaltenzahl im Auto-Modus (Desktop). Default 2 = bisheriges Layout. */
+  columns?: 1 | 2 | 3;
+  /** Ausrichtung des Rasters bei nicht voller Breite. Default "left". */
+  align?: "left" | "center" | "right";
+}
+
+export interface AddonCalcItem {
+  label: string;
+  value: string;
+  visible?: boolean;
+}
+
+export interface AddonCalculationConfig {
+  visible?: boolean;
+  heading?: string;
+  items?: AddonCalcItem[];
+  totalLabel?: string;
+  totalValue?: string;
+  suffix?: string;
 }
 
 export interface PricingAddonsBlockData {
   heading: string;
   subtitle: string;
   addonsConfig?: CmsAddonRepeaterItem[];
+  grid?: AddonGridConfig;
+  /** undefined → automatische Legacy-Beispielrechnung (bisheriges Verhalten). */
+  calculation?: AddonCalculationConfig;
 }
 
 export interface PricingCompareBlockData {
@@ -484,6 +514,7 @@ export type FieldType =
   | "media"
   | "select"
   | "layout-variant"
+  | "group"
   | "repeater";
 
 export interface FieldSchema {
@@ -927,25 +958,58 @@ export const BLOCK_REGISTRY: Record<BlockType, BlockDefinition> = {
       { key: "heading",  label: "Überschrift", type: "text",     placeholder: "Optionale Erweiterungen" },
       { key: "subtitle", label: "Unterzeile",  type: "textarea", placeholder: "Ergänze deine Mitgliedschaft…" },
       {
-        key: "addonsConfig",
-        label: "Add-ons anpassen",
-        type: "repeater",
-        description: "Füge Add-ons über ihren Slug hinzu (z.B. crossfit-hyrox, sauna)",
+        key: "grid",
+        label: "Raster",
+        type: "group",
+        description: "Auto = fließendes Raster mit Spaltenzahl. Custom = festes 6-Slot-Raster (Slot je Karte unten zuweisen; Desktop – Tablet max. 2 Spalten, Mobil 1 Spalte).",
         subFields: [
-          { key: "id", label: "Add-on ID / Slug", type: "text" },
-          { key: "hidden", label: "Add-on ausblenden", type: "toggle" },
-          { 
-            key: "optionsConfig", 
-            label: "Optionen anpassen", 
-            type: "repeater", 
-            description: "Optionen (z.B. '1x pro Woche').",
+          { key: "mode",    label: "Modus",       type: "select", options: [ { value: "auto", label: "Auto (fließend)" }, { value: "custom", label: "Custom (6 Slots)" } ] },
+          { key: "columns", label: "Spalten (Auto)", type: "select", options: [ { value: "1", label: "1 Spalte" }, { value: "2", label: "2 Spalten" }, { value: "3", label: "3 Spalten" } ] },
+          { key: "align",   label: "Ausrichtung",  type: "select", options: [ { value: "left", label: "Links" }, { value: "center", label: "Zentriert" }, { value: "right", label: "Rechts" } ] },
+        ],
+      },
+      {
+        key: "addonsConfig",
+        label: "Add-on-Karten (Platzierung)",
+        type: "repeater",
+        description: "Reihenfolge hier = Anzeige-Reihenfolge. Slug referenziert das Add-on aus den Tarifdaten (z.B. crossfit-hyrox, sauna). Slot 1–6 nur im Custom-Raster (0 = automatisch). Karteninhalte (Titel, Icon, Zeilen) werden in den Tarifdaten gepflegt.",
+        subFields: [
+          { key: "id",     label: "Add-on ID / Slug",  type: "text" },
+          { key: "hidden", label: "Karte ausblenden",  type: "toggle" },
+          { key: "slot",   label: "Slot (1–6, 0 = auto)", type: "number", min: 0, max: 6, step: 1 },
+          {
+            key: "optionsConfig",
+            label: "Zeilen anpassen",
+            type: "repeater",
+            description: "Zeilen dieser Karte per leftText/Label referenzieren und bei Bedarf ausblenden.",
             subFields: [
-              { key: "id", label: "Options-Label", type: "text" },
-              { key: "hidden", label: "Option ausblenden", type: "toggle" }
-            ] 
+              { key: "id", label: "Zeilen-Label (leftText)", type: "text" },
+              { key: "hidden", label: "Zeile ausblenden", type: "toggle" }
+            ]
           }
         ]
-      }
+      },
+      {
+        key: "calculation",
+        label: "Beispielrechnung",
+        type: "group",
+        description: "Leer lassen = automatische Beispielrechnung wie bisher. Sobald Posten definiert sind, wird ausschließlich diese Konfiguration angezeigt.",
+        subFields: [
+          { key: "visible",    label: "Sichtbar",            type: "toggle", toggleDefault: true },
+          { key: "heading",    label: "Überschrift",         type: "text",   placeholder: "BEISPIELRECHNUNG" },
+          {
+            key: "items", label: "Posten", type: "repeater",
+            subFields: [
+              { key: "label",   label: "Bezeichnung", type: "text", placeholder: "Athletic (69 €)" },
+              { key: "value",   label: "Wert",        type: "text", placeholder: "+50 €" },
+              { key: "visible", label: "Sichtbar",    type: "toggle", toggleDefault: true },
+            ],
+          },
+          { key: "totalLabel", label: "Summen-Label",  type: "text", placeholder: "=" },
+          { key: "totalValue", label: "Summe",         type: "text", placeholder: "119 €" },
+          { key: "suffix",     label: "Suffix",        type: "text", placeholder: "/ Monat" },
+        ],
+      },
     ],
   },
 

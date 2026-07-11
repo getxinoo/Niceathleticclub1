@@ -753,9 +753,13 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return { success: true, message: "Sichtbarkeit gespeichert (Offline-Mock)" } as T;
       }
 
-      // Pages / Sitebuilder – POST (saveBlocks)
+      // Pages / Sitebuilder – Schreibzugriffe dürfen offline NIE erfolgreich
+      // wirken: Veröffentlichen = autoritative Pages-API. Ohne erreichbares
+      // Backend muss der Editor den Fehler zeigen ("Lokal zwischenspeichern"
+      // ist der Offline-Weg), statt Dirty-State auf Basis eines Mock-Erfolgs
+      // zu löschen.
       if (ep === "/pages") {
-        return { success: true, message: "Seite gespeichert (Offline-Mock)" } as T;
+        throw new ApiError(503, "Offline", "Veröffentlichen nicht möglich – Backend nicht erreichbar. Änderungen mit „Lokal zwischenspeichern“ sichern.");
       }
 
       // Spezifische Antworten für bestimmte Endpunkte

@@ -561,6 +561,7 @@ export default function PageEditor() {
   const [previewMode, setPreviewMode]     = useState<"desktop" | "mobile">("desktop");
   const [saving, setSaving]              = useState(false);
   const [saveSuccess, setSaveSuccess]     = useState(false);
+  const [localSaved, setLocalSaved]       = useState(false);
 
   // ── Dirty tracking (unsaved changes vs. last persisted snapshot) ────────────
   const lastSavedRef = useRef<string>("");   // JSON of the last loaded/saved blocks
@@ -805,40 +806,64 @@ export default function PageEditor() {
 
     setSaving(true);
 
-    // 1. SEO in localStorage persistieren
-    try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ }
-
-    // 2. Blöcke in localStorage persistieren (schnell, offline-sicher)
-    try {
-      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(blocks));
-      window.dispatchEvent(new CustomEvent("nac-page-updated", { detail: { slug } }));
-    } catch { /* ignore */ }
-
-    // 3. Async zur PHP-API (Best-Effort – schlägt im Offline-Modus still fehl)
+    // 1. ZUERST die autoritative Pages-API (PUT, Auth) – und auf die Antwort
+    //    warten. Erst NACH Erfolg werden lokale Kopien/Events geschrieben:
+    //    ein API-Fehler darf weder Dirty-State löschen noch einen Teil-Publish
+    //    (localStorage/Event) hinterlassen. Kein falscher Erfolg.
+    let savedPage: { blocks?: import("../../../lib/api-service").SerializedBlock[] } | null = null;
     try {
       // "title"/"meta_description" werden hier bewusst NICHT gesendet: der SEO-Tab
       // ist aktuell nur localStorage-gestützt (nie vom Server geladen) – ein Save
       // würde sonst einen echten DB-Titel/Meta-Text stillschweigend überschreiben.
-      await api.pages.saveBlocks(slug, {
+      savedPage = await api.pages.saveBlocks(slug, {
         blocks: blocks as import("../../../lib/api-service").SerializedBlock[],
         status: published ? "published" : "draft",
         allow_empty_blocks: allowEmptyBlocks,
       });
     } catch (err) {
-      console.error("[PageEditor] PHP-API save failed:", err);
-      alert("Fehler beim Speichern in der Datenbank! Die Änderungen wurden nur lokal gesichert.");
+      console.error("[PageEditor] Veröffentlichen fehlgeschlagen:", err);
+      alert(
+        "Veröffentlichen fehlgeschlagen – die Seite wurde NICHT gespeichert.\n\n" +
+        "Deine Änderungen bleiben im Editor erhalten. Nutze „Lokal zwischenspeichern“, " +
+        "um sie im Browser zu sichern, und versuche es erneut."
+      );
       setSaving(false);
       return;
     }
 
-    // Neuen "gespeichert"-Snapshot setzen → Dirty-Indikator zurücksetzen.
-    lastSavedRef.current = JSON.stringify(blocks);
-    loadedCountRef.current = blocks.length;
+    // 2. Autoritative Server-Antwort als neue Baseline übernehmen.
+    const authoritative = Array.isArray(savedPage?.blocks) ? (savedPage!.blocks as unknown as PageBlock[]) : blocks;
+    if (authoritative !== blocks) _setBlocks(authoritative);
+    lastSavedRef.current = JSON.stringify(authoritative);
+    loadedCountRef.current = authoritative.length;
     setDirty(false);
+
+    // 3. Lokale Kopie (Editor-Cache) + Refetch-Signal an offene Public-Tabs –
+    //    Public-Seiten lesen selbst NIE localStorage, das Event stößt nur ihren
+    //    API-Refetch an.
+    try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(authoritative));
+      window.dispatchEvent(new CustomEvent("nac-page-updated", { detail: { slug } }));
+    } catch { /* ignore */ }
 
     setSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
+  // ── Lokal zwischenspeichern: NUR localStorage, kein API-Write, kein Event ────
+  // (Semantik: Browser-Entwurf sichern; Veröffentlichen bleibt der einzige Weg
+  // in die Datenbank. Dirty bleibt gesetzt, da nichts publiziert wurde.)
+  const handleSaveLocal = () => {
+    try {
+      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(blocks));
+      localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo));
+      setLocalSaved(true);
+      setTimeout(() => setLocalSaved(false), 2000);
+    } catch {
+      alert("Lokales Zwischenspeichern fehlgeschlagen (localStorage nicht verfügbar).");
+    }
   };
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
@@ -988,6 +1013,27 @@ export default function PageEditor() {
               style={{ background: published ? "#4ade80" : "rgba(255,255,255,0.2)" }}
             />
             {published ? "Veröffentlicht" : "Entwurf"}
+          </button>
+
+          {/* Lokal zwischenspeichern – nur Browser-Entwurf, kein API-Write */}
+          <button
+            onClick={handleSaveLocal}
+            title="Entwurf nur im Browser sichern (kein Veröffentlichen)"
+            className="flex items-center justify-center gap-2 px-3 transition-all duration-200 cursor-pointer active:scale-[0.98]"
+            style={{
+              background: localSaved ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${localSaved ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.12)"}`,
+              color: localSaved ? "#4ade80" : "rgba(255,255,255,0.55)",
+              fontFamily: "var(--font-condensed)",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              minHeight: "34px",
+            }}
+          >
+            {localSaved ? <CheckCircle2 size={12} /> : <Save size={12} />}
+            {localSaved ? "Lokal gesichert" : "Lokal zwischenspeichern"}
           </button>
 
           {/* Save button */}
