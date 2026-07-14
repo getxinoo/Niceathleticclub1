@@ -27,6 +27,10 @@ api/config.php
 api/config.local.php
 api/config.production.php
 *.sql
+# Migrations under api/sql/ ARE version-controlled (additive schema DDL only —
+# never dumps/data/secrets). Enforced by scripts/validate-sql.mjs (predeploy).
+!api/sql/
+!api/sql/*.sql
 sql-dump.md
 *_dump*
 backups/

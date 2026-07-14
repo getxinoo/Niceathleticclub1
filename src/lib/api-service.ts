@@ -9,7 +9,11 @@
 import { toast } from "sonner";
 
 // ── Konfiguration ─────────────────────────────────────────────────────────────
-export const BASE_URL: string = "https://nicefitness.de/api";
+// Wie im Header dokumentiert: VITE_API_BASE_URL überschreibt die Basis-URL
+// (z. B. für lokale Abnahmetests ohne Produktions-Traffic); ohne gesetzte
+// Variable bleibt der Produktions-Fallback exakt wie bisher.
+export const BASE_URL: string =
+  (import.meta.env?.VITE_API_BASE_URL as string | undefined) || "https://nicefitness.de/api";
 
 const TOKEN_KEY = "nac_auth_token";
 
@@ -749,9 +753,13 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
         return { success: true, message: "Sichtbarkeit gespeichert (Offline-Mock)" } as T;
       }
 
-      // Pages / Sitebuilder – POST (saveBlocks)
+      // Pages / Sitebuilder – Schreibzugriffe dürfen offline NIE erfolgreich
+      // wirken: Veröffentlichen = autoritative Pages-API. Ohne erreichbares
+      // Backend muss der Editor den Fehler zeigen ("Lokal zwischenspeichern"
+      // ist der Offline-Weg), statt Dirty-State auf Basis eines Mock-Erfolgs
+      // zu löschen.
       if (ep === "/pages") {
-        return { success: true, message: "Seite gespeichert (Offline-Mock)" } as T;
+        throw new ApiError(503, "Offline", "Veröffentlichen nicht möglich – Backend nicht erreichbar. Änderungen mit „Lokal zwischenspeichern“ sichern.");
       }
 
       // Spezifische Antworten für bestimmte Endpunkte
@@ -919,9 +927,11 @@ async function getMockFallback<T>(endpoint: string, method?: string, body?: stri
       }
 
       if (ep === "/login") {
-        // Im Mock-Modus: Credentials gegen bekannte Dev-Accounts prüfen.
+        // Mock-Login ist strikt dev-only: Im Prod-Build ersetzt Vite
+        // import.meta.env.DEV durch `false` und entfernt den ganzen Block
+        // (inkl. Dev-Account-Liste) per Dead-Code-Elimination.
         // Im Preview/Offline-Modus reicht Email-Match – Passwort wird nur vom echten PHP-Backend geprüft.
-        if (body) {
+        if (import.meta.env.DEV && body) {
           try {
             const creds = JSON.parse(body) as { email?: string };
             const DEV_ACCOUNTS = [

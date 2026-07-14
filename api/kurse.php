@@ -42,15 +42,18 @@ switch ($method) {
         break;
 
     case 'POST':
+        require_permission('courses.write'); // P1 Security-Hotfix: Kurs anlegen = Staff-Recht
         create_course();
         break;
 
     case 'PATCH':
+        require_permission('courses.write'); // P1 Security-Hotfix
         if ($id === null) json_error('Parameter "id" fehlt.');
         update_course($id);
         break;
 
     case 'DELETE':
+        require_permission('courses.write'); // P1 Security-Hotfix
         if ($id === null) json_error('Parameter "id" fehlt.');
         delete_course($id);
         break;

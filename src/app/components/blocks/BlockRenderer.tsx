@@ -1,12 +1,15 @@
 /**
  * BlockRenderer.tsx – Zentrale Block-Render-Engine (Single Source of Truth)
  * ─────────────────────────────────────────────────────────────────────────────
- * WICHTIG: Kein Import von Studio.tsx / Team.tsx (erzeugt zirkuläre Imports
- * und bringt die App zum Absturz). Studio/Team-Blöcke haben hier eigene,
- * vollständige Inline-Renderer.
+ * Studio- und Team-Blöcke rendern die ECHTEN geteilten Section-Komponenten
+ * aus Studio.tsx bzw. Team.tsx — Admin-Vorschau und öffentliche Seite teilen
+ * damit exakt dasselbe Markup (kein vereinfachtes Admin-Duplikat).
  *
- * Die echten Seiten (Studio.tsx, Team.tsx) rendern ihre Sections direkt –
- * das Live-Frontend bleibt davon komplett unberührt.
+ * Import-Richtung ist azyklisch: Studio.tsx/Team.tsx importieren weder
+ * BlockRenderer noch BlockPreview. Sollte eine Seite jemals BlockRenderer
+ * benötigen, muss die betroffene Section stattdessen in ein eigenes Modul
+ * extrahiert werden — NICHT hierher zurückkopiert (Drift war die Ursache des
+ * Produktions-Bildausfalls vom 2026-07-10).
  */
 
 import { useState } from "react";
@@ -28,27 +31,19 @@ import { MOCK_REVIEWS } from "../../../data/reviews";
 // keinen Zirkelbezug. Preise.tsx (Live-Frontend) verwendet exakt dieselbe
 // Komponente + denselben Hook.
 import { usePricingData } from "../../../lib/use-pricing";
+import { applyAddonsConfig } from "../../../lib/addons-config";
+import { StudioHeroSection, StudioZonesSection, StudioInfoSection } from "../../pages/Studio";
 import { PricingAddonsSection, PricingSection, PricingComparisonSection } from "../pricing";
 import { TeamGridSection } from "../../pages/Team";
 import { BLOCK_REGISTRY } from "../../../data/blocks";
 
-// ── Figma-Assets ──────────────────────────────────────────────────────────────
-import pillarStrengthImg from "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png";
-import pillarCrossfitImg from "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png";
-import pillarHyroxImg    from "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png";
-import pillarThekeImg    from "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png";
-import athleticAreaImg   from "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png";
-import crossfitZoneImg   from "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png";
-
-const FIGMA_MAP: Record<string, string> = {
-  "figma:asset/4d0137fe5cbc4aed779b344b68c6ae4a170d2668.png": pillarStrengthImg,
-  "figma:asset/0056420c6523fcaf0bc63febb2b162354bc9a245.png": pillarCrossfitImg,
-  "figma:asset/4365f816dcc86a67f27557eee60c8f4cf8a11b3d.png": pillarHyroxImg,
-  "figma:asset/340d3320565627752ba7f105637cdbc8dc4d4584.png": pillarThekeImg,
-  "figma:asset/12f0eb425f227fc6169c67d1390da3067ec74f70.png": athleticAreaImg,
-  "figma:asset/074311f22e30fb140e6274c625d4f86c2eb55278.png": crossfitZoneImg,
-};
-const img = (src: string) => FIGMA_MAP[src] ?? src;
+// ── Kanonischer Asset-Resolver ────────────────────────────────────────────────
+// Ersetzt die frühere lokale FIGMA_MAP (nur 6 Hashes, mit rohen
+// "figma:asset/…"-Literal-Keys im Bundle). resolveImg deckt ALLE bekannten
+// Legacy-Hashes ab und liefert für unbekannte eine sichtbare Diagnose-Grafik —
+// niemals gelangt ein roher Legacy-String als src zum Browser.
+import { resolveImg } from "../../../lib/images";
+const img = resolveImg;
 
 // ── Icon-Map ──────────────────────────────────────────────────────────────────
 const ICONS: Record<string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>> = {
@@ -175,7 +170,10 @@ function PillarsBlock({ d }: { d: PillarsBlockData }) {
           </h2>
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: "14px", maxWidth: 640, margin: "20px auto 0", lineHeight: 1.7 }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 2 }}>
+        {/* Responsive statt repeat(4,1fr): feste 1fr-Tracks schrumpfen nicht
+            unter ihre Inhaltsbreite und sprengen die 390px-Editor-Vorschau.
+            Desktop (lg) bleibt wie gehabt vierspaltig. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: 2 }}>
           {p.map((x) => (
             <div key={x.hl} style={{ position: "relative", aspectRatio: "3/4", overflow: "hidden" }}>
               <img src={x.i} alt={x.hl} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
@@ -200,13 +198,22 @@ function StatsBlock({ d }: { d: StatsBlockData }) {
     const dd = d as Record<string, unknown>;
     return { icon: dd[`item${n}Icon`] as string, value: dd[`item${n}Value`] as string, label: dd[`item${n}Label`] as string };
   }).filter((x) => x.value);
+  // Responsive Spalten – exakt wie die öffentliche StatsSection (Preise.tsx):
+  // auf 390px NIE vier feste Spalten (das sprengte die mobile Editor-Vorschau,
+  // weil `repeat(4,1fr)`-Tracks mit `min-width:auto` nicht unter ihre
+  // Inhaltsbreite schrumpfen). Trenner nur ab `sm`, damit der 2-Spalten-Umbruch
+  // mobil keine Reststriche zeigt.
+  const cols =
+    items.length === 4 ? "grid-cols-2 sm:grid-cols-4"
+    : items.length === 3 ? "grid-cols-3"
+    : "grid-cols-2";
   return (
     <section style={{ background: S, borderTop: "1px solid rgba(255,255,255,.04)", borderBottom: "1px solid rgba(255,255,255,.04)" }}>
-      <div style={{ ...W1280, display: "grid", gridTemplateColumns: `repeat(${items.length},1fr)` }}>
+      <div className={`grid ${cols}`} style={{ ...W1280 }}>
         {items.map((it, i) => {
           const Icon = ICONS[it.icon] ?? Zap;
           return (
-            <div key={i} style={{ padding: "48px 24px", textAlign: "center", borderRight: i < items.length - 1 ? "1px solid rgba(255,255,255,.06)" : "none" }}>
+            <div key={i} className={i < items.length - 1 ? "border-white/[0.06] sm:border-r" : undefined} style={{ padding: "48px 24px", textAlign: "center" }}>
               <Icon size={20} style={{ color: "var(--brand)", marginBottom: 12 }} />
               <p style={{ fontFamily: "var(--font-display)", fontSize: "2.4rem", color: "white", margin: "0 0 6px", letterSpacing: "0.02em" }}>{it.value}</p>
               <p style={{ fontFamily: "var(--font-condensed)", fontSize: "10px", fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,.4)", textTransform: "uppercase" }}>{it.label}</p>
@@ -287,10 +294,13 @@ function PricingCardsBlock({ d }: { d: PricingCardsBlockData }) {
 function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
   const { data, loading } = usePricingData("preise");
   if (loading) return <Spinner />;
-  let addons = data?.addons ?? [];
+  // Identischer Merge wie die öffentliche /preise-Seite (applyAddonsConfig) –
+  // Desktop- und Mobile-Vorschau rendern damit exakt das Live-Layout.
+  // Legacy-Blockdaten (selectedAddonSlugs/hiddenAddonSlugs) bleiben wirksam.
+  let addons = applyAddonsConfig(data?.addons ?? [], d);
   const sel = (d as unknown as Record<string, unknown>).selectedAddonSlugs as string[] | undefined;
   const hidden = (d as unknown as Record<string, unknown>).hiddenAddonSlugs as string[] | undefined;
-  if (sel && sel.length > 0) {
+  if ((!d.addonsConfig || d.addonsConfig.length === 0) && sel && sel.length > 0) {
     addons = sel.map((slug) => addons.find((a) => a.slug === slug)).filter(Boolean) as typeof addons;
   }
   if (hidden && hidden.length > 0) {
@@ -301,6 +311,8 @@ function PricingAddonsBlock({ d }: { d: PricingAddonsBlockData }) {
       addons={addons}
       heading={d.heading || undefined}
       subtitle={d.subtitle || undefined}
+      grid={d.grid}
+      calculation={d.calculation}
     />
   );
 }
@@ -325,7 +337,8 @@ function ReviewsBlock({ d }: { d: ReviewsBlockData }) {
     <section style={{ background: S, padding: P96 }}>
       <div style={W1280}>
         {d.heading && <H2 t={d.heading} mb={48} />}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        {/* Responsive statt repeat(3,1fr) — Desktop (lg) bleibt dreispaltig. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" style={{ gap: 16 }}>
           {items.slice(0, 6).map((r, i) => (
             <div key={i} style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
               <div style={{ display: "flex", gap: 3, marginBottom: 12 }}>
@@ -429,6 +442,14 @@ function FaqBlock({ d }: { d: FaqBlockData }) {
 }
 
 function ValuesGridBlock({ d }: { d: ValuesGridBlockData }) {
+  // Responsive Spalten statt repeat(min(n,3),1fr): Desktop-Design bleibt
+  // erhalten (1/2/3 Spalten je nach Anzahl), aber mobil (390px) wird immer
+  // einspaltig umgebrochen statt die Editor-Vorschau zu sprengen.
+  const n = (d.values || []).length;
+  const cols =
+    n <= 1 ? "grid-cols-1"
+    : n === 2 ? "grid-cols-1 sm:grid-cols-2"
+    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
   return (
     <section style={{ background: S, padding: P96 }}>
       <div style={W1280}>
@@ -436,7 +457,7 @@ function ValuesGridBlock({ d }: { d: ValuesGridBlockData }) {
           {d.heading && <H2 t={d.heading} mb={12} />}
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: "14px", maxWidth: 560, margin: "0 auto" }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min((d.values || []).length, 3)},1fr)`, gap: 16 }}>
+        <div className={`grid ${cols}`} style={{ gap: 16 }}>
           {(d.values || []).map((v, i) => {
             const Icon = ICONS[v.icon] ?? Heart;
             return (
@@ -463,7 +484,7 @@ function FeaturesListBlock({ d }: { d: FeaturesListBlockData }) {
           {d.heading && <H2 t={d.heading} mb={12} />}
           {d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: 14, maxWidth: 560, margin: "0 auto" }}>{d.subtitle}</p>}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: d.layout === "grid" ? "repeat(3,1fr)" : "1fr", gap: 16 }}>
+        <div className={d.layout === "grid" ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3" : "grid gap-4 grid-cols-1"}>
           {(d.features || []).map((f, i) => {
             const Icon = ICONS[f.icon] ?? CheckCircle2;
             return (
@@ -589,93 +610,12 @@ function ZoneGridBlock({ d }: { d: ZoneGridBlockData }) {
   return <section style={{ background: S, padding: P96, textAlign: "center" }}><div style={W1280}>{d.heading && <H2 t={d.heading} mb={d.subtitle ? 12 : 48} />}{d.subtitle && <p style={{ color: "rgba(255,255,255,.5)", fontSize: 14, marginBottom: 48 }}>{d.subtitle}</p>}<ApiBox label="Zonen-Raster" /></div></section>;
 }
 
-// ── Studio-Blöcke (Inline, KEIN Import aus Studio.tsx) ────────────────────────
-function StudioHeroBlock({ d }: { d: StudioHeroBlockData }) {
-  return (
-    <section style={{ position: "relative", minHeight: "80vh", display: "flex", alignItems: "flex-end", background: S, overflow: "hidden" }}>
-      <img src={img(d.heroImage)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .5 }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(5,5,5,.95) 0%,rgba(5,5,5,.2) 70%,transparent 100%)" }} />
-      <div style={{ position: "relative", zIndex: 2, maxWidth: 1280, margin: "0 auto", padding: "0 24px 80px", width: "100%" }}>
-        {d.label && <p style={{ fontFamily: "var(--font-condensed)", fontSize: 10, fontWeight: 700, letterSpacing: "0.25em", color: "var(--brand)", marginBottom: 24, textTransform: "uppercase" }}>— {d.label}</p>}
-        <h1 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(3rem,10vw,8rem)", lineHeight: .92, letterSpacing: "0.02em", textTransform: "uppercase", margin: "0 0 24px" }}>
-          <span style={{ color: "white" }}>{d.headlineNormal} </span><span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-        </h1>
-        {d.subtitle && <p style={{ color: "rgba(255,255,255,.6)", fontSize: 14, maxWidth: 560, lineHeight: 1.7, marginBottom: 32 }}>{d.subtitle}</p>}
-        <div style={{ display: "flex", gap: 32, marginBottom: 40, flexWrap: "wrap" }}>
-          {[{ v: d.quickStat1Val, l: d.quickStat1Label }, { v: d.quickStat2Val, l: d.quickStat2Label }, { v: d.quickStat3Val, l: d.quickStat3Label }].filter(s => s.v).map((s, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <p style={{ fontFamily: "var(--font-display)", fontSize: "2rem", color: "white", margin: 0 }}>{s.v}</p>
-              <p style={{ fontFamily: "var(--font-condensed)", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,.4)", textTransform: "uppercase" }}>{s.l}</p>
-            </div>
-          ))}
-        </div>
-        {d.ctaLabel && <PBtn label={d.ctaLabel} to={d.ctaUrl} />}
-      </div>
-    </section>
-  );
-}
-
-function StudioZonesBlock({ d }: { d: StudioZonesBlockData }) {
-  return (
-    <section style={{ background: S, padding: P96 }}>
-      <div style={W1280}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
-          <SLabel t={d.sectionLabel} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.4rem,6vw,5rem)", lineHeight: .9, letterSpacing: "0.02em", textTransform: "uppercase", color: "white", margin: 0 }}>
-            {d.headlineNormal} <span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-          {(d.zones || []).map((zone, i) => (
-            <div key={zone.key || i} style={{ position: "relative", overflow: "hidden", minHeight: zone.large ? 400 : 200, gridRow: zone.large ? "span 2" : undefined }}>
-              <img src={img(zone.image)} alt={zone.label} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: .6 }} />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(5,5,5,.9) 0%,rgba(5,5,5,.1) 60%)" }} />
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 20 }}>
-                <span style={{ fontFamily: "var(--font-condensed)", fontSize: 8, fontWeight: 700, letterSpacing: "0.14em", color: "var(--brand)", textTransform: "uppercase" }}>{zone.tag}</span>
-                <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem", color: "white", margin: "6px 0", letterSpacing: "0.03em", textTransform: "uppercase" }}>{zone.label}</h3>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,.5)", lineHeight: 1.5 }}>{zone.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StudioInfoBlock({ d }: { d: StudioInfoBlockData }) {
-  return (
-    <section style={{ background: S, padding: P96 }}>
-      <div style={W1280}>
-        <div style={{ marginBottom: 48 }}>
-          <SLabel t={d.sectionLabel} />
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(2.4rem,6vw,5rem)", lineHeight: .9, letterSpacing: "0.02em", textTransform: "uppercase", color: "white" }}>
-            {d.headlineNormal} <span style={{ WebkitTextStroke: "2px white", color: "transparent" }}>{d.headlineOutline}</span>
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 32 }}>
-          <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
-            <p style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--brand)", textTransform: "uppercase", marginBottom: 16 }}>{d.studioHoursHeading}</p>
-            {(d.hours || []).map((row, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.05)" }}>
-                <span style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: "rgba(255,255,255,.6)", textTransform: "uppercase" }}>{row.day}</span>
-                <span style={{ fontSize: 13, color: "white" }}>{row.time}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", padding: 24 }}>
-            <p style={{ fontFamily: "var(--font-condensed)", fontSize: 11, fontWeight: 700, letterSpacing: "0.18em", color: "var(--brand)", textTransform: "uppercase", marginBottom: 16 }}>{d.addressHeading}</p>
-            <p style={{ color: "white", fontSize: 14, marginBottom: 4 }}>{d.addressLine1}</p>
-            <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 2 }}>{d.addressLine2}</p>
-            <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 20 }}>{d.addressLine3}</p>
-            {d.contactEmail && <p style={{ color: "rgba(255,255,255,.6)", fontSize: 13, marginBottom: 20 }}>{d.contactEmail}</p>}
-            {d.ctaLabel && <PBtn label={d.ctaLabel} to={d.ctaUrl} />}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+// ── Studio-Blöcke: ECHTE geteilte Sections aus Studio.tsx ────────────────────
+// Kein vereinfachtes Admin-Duplikat mehr: die Vorschau rendert exakt die
+// öffentlichen Komponenten (Markup, Styles, Slot-Mosaik identisch). Der Import
+// ist azyklisch — Studio.tsx importiert BlockRenderer/BlockPreview nicht
+// (gleiches Muster wie TeamGridSection weiter unten). showSlotLabels blendet
+// nur die Admin-Positions-Badges als Overlay ein, ersetzt aber kein Markup.
 
 // ── Team-Blöcke (Inline, KEIN Import aus Team.tsx) ────────────────────────────
 function TeamHeaderBlock({ d }: { d: TeamHeaderBlockData }) {
@@ -739,9 +679,9 @@ export function BlockRenderer({ block }: { block: PageBlock }) {
     case "legal-content":   return <LegalContentBlock d={d as LegalContentBlockData} />;
     case "timetable":       return <TimetableBlock d={d as TimetableBlockData} />;
     case "zone-grid":       return <ZoneGridBlock d={d as ZoneGridBlockData} />;
-    case "studio-hero":     return <StudioHeroBlock d={d as StudioHeroBlockData} />;
-    case "studio-zones":    return <StudioZonesBlock d={d as StudioZonesBlockData} />;
-    case "studio-info":     return <StudioInfoBlock d={d as StudioInfoBlockData} />;
+    case "studio-hero":     return <StudioHeroSection data={d as unknown as StudioHeroBlockData} reduced={false} />;
+    case "studio-zones":    return <StudioZonesSection data={d as unknown as StudioZonesBlockData} showSlotLabels />;
+    case "studio-info":     return <StudioInfoSection data={d as unknown as StudioInfoBlockData} />;
     case "team-header":     return <TeamHeaderBlock d={d as TeamHeaderBlockData} />;
     case "team-grid":       return <TeamGridBlock d={d as TeamGridBlockData} />;
     default:

@@ -5,7 +5,12 @@
 declare(strict_types=1);
 require_once '../config.php';
 
+// ── Authorization (P1 Security-Hotfix): benötigt leads.write UND members.write ─
+// Zuvor nur require_auth() → jedes Mitglied konnte Leads zu Mitgliedern
+// konvertieren (neue members-/users-Datensätze anlegen).
 $admin = require_auth();
+require_permission('leads.write');
+require_permission('members.write');
 $body = get_body();
 
 if (!$body['leadId'] || !$body['plan']) json_error('Daten unvollständig.');

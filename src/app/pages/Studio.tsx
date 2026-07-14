@@ -36,7 +36,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageMeta } from "../components/seo/PageMeta";
-import { BASE_URL } from "../../lib/api-service";
+import { fetchPublishedBlocks } from "../../lib/public-blocks";
 import {
   PAGE_INITIAL_BLOCKS,
   type PageBlock,
@@ -47,9 +47,18 @@ import {
   type StudioAmenityItem,
 } from "../../data/blocks";
 
-// ── Asset resolver: (no longer needed, uses real paths) ───────────────
+// ── Asset resolver ────────────────────────────────────────────────────────────
+// NIEMALS wieder als No-op vereinfachen: gespeicherte Produktions-Blöcke
+// (pages.php / localStorage) enthalten weiterhin Legacy-Asset-Strings
+// ("figma:asset/<hash>.png"). Ein Passthrough schickt diese Strings roh als
+// <img src> an den Browser — genau das war der Produktions-Bildausfall vom
+// 2026-07-10 (Rollback nötig). resolveImg() bildet Legacy-Hashes auf die
+// kanonischen /images/-Pfade ab und liefert für unbekannte Hashes eine
+// sichtbare Diagnose-Grafik.
+import { resolveImg } from "../../lib/images";
+import { normalizeLayoutVariant, isFeatureSlot, slotPositionLabel } from "../../lib/studio-layout";
 export function resolveStudioAsset(src: string): string {
-  return src;
+  return resolveImg(src);
 }
 
 // ── Icon resolver: Lucide name string → React component ──────────────────────
@@ -63,28 +72,11 @@ export function resolveStudioIcon(name: string): LucideIcon {
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
+// Öffentliche Priorität: veröffentlichte API-Blöcke → Seed nur bei wirklich
+// fehlender Seite. NIE localStorage (Browser-Entwürfe sind Editor-intern).
 async function fetchStudioBlocks(): Promise<PageBlock[]> {
-  // 1. Try PHP API (production)
-  try {
-    const res = await fetch(`${BASE_URL}/pages.php?slug=studio`, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (Array.isArray(json?.blocks) && json.blocks.length > 0) {
-      return json.blocks as PageBlock[];
-    }
-  } catch { /* fall through */ }
-  // 2. Admin edits saved by PageEditor (localStorage)
-  try {
-    const saved = localStorage.getItem("nac_blocks_studio");
-    if (saved) {
-      const parsed = JSON.parse(saved) as PageBlock[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch { /* fall through */ }
-  // 3. Seed data
-  return PAGE_INITIAL_BLOCKS["studio"];
+  const { blocks } = await fetchPublishedBlocks("studio", PAGE_INITIAL_BLOCKS["studio"] ?? []);
+  return blocks;
 }
 
 // ── Animation helpers ─────────────────────────────────────────────────────────
@@ -392,12 +384,52 @@ export function StudioHeroSection({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTION 2 – ZONES (Bento Grid / Swipe Carousel)
+// SECTION 2 – ZONES (Slot-basiertes Mosaik / Swipe Carousel)
 // ─────────────────────────────────────────────────────────────────────────────
-export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
+// Verbindliche Layoutlogik (siehe lib/studio-layout.ts): Größe gehört zum
+// SLOT, nicht zur Karte. layoutVariant bestimmt, welche sichtbare Position
+// groß erscheint (feature-left → Pos. 1, feature-right → Pos. 3). Umsortieren
+// einer Karte auf die Feature-Position macht genau diese Karte groß. Karten
+// ab Position 7 laufen im normalen Raster unter dem Mosaik weiter. Mobile
+// zeigt immer die gespeicherte Reihenfolge, unabhängig von der Variante.
+//
+// showSlotLabels ist ein reines Admin-Overlay (Positions-Badges) und wird von
+// der öffentlichen Seite nie gesetzt — Markup/Styles sind identisch.
+
+// Explizite Slot-Platzierung fürs 3-Spalten-Mosaik (lg). md (2 Spalten):
+// Feature-Karte über volle Breite. Darunter/oben: normaler Auto-Flow.
+const MOSAIC_CSS = `
+@media (min-width: 1024px) {
+  .nac-mosaic-left  > .nac-slot:nth-child(1) { grid-column: 1 / span 2; grid-row: 1 / span 2; }
+  .nac-mosaic-left  > .nac-slot:nth-child(2) { grid-column: 3; grid-row: 1; }
+  .nac-mosaic-left  > .nac-slot:nth-child(3) { grid-column: 3; grid-row: 2; }
+  .nac-mosaic-right > .nac-slot:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .nac-mosaic-right > .nac-slot:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .nac-mosaic-right > .nac-slot:nth-child(3) { grid-column: 2 / span 2; grid-row: 1 / span 2; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .nac-mosaic-left  > .nac-slot:nth-child(1) { grid-column: 1 / span 2; }
+  .nac-mosaic-right > .nac-slot:nth-child(3) { grid-column: 1 / span 2; }
+}
+`;
+
+export function StudioZonesSection({
+  data,
+  showSlotLabels = false,
+}: {
+  data: StudioZonesBlockData;
+  showSlotLabels?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
-  const { scrollRef, activeIdx, handleScroll, scrollTo } = useCarousel(data.zones.length);
+
+  // Ausgeblendete Zonen fallen VOR der Slot-Berechnung raus (kein Loch).
+  const visibleZones = (data.zones ?? []).filter((z) => z.visible !== false);
+  const variant = normalizeLayoutVariant(data.layoutVariant);
+  // Mosaik braucht mindestens 3 sichtbare Karten; darunter normales Raster.
+  const mosaicActive = visibleZones.length >= 3;
+
+  const { scrollRef, activeIdx, handleScroll, scrollTo } = useCarousel(visibleZones.length);
 
   return (
     <section
@@ -434,22 +466,26 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
           </motion.h2>
         </motion.div>
 
-        {/* ── Desktop Bento Grid (sm+) ── */}
+        {/* ── Desktop Mosaik (sm+) ── */}
+        <style>{MOSAIC_CSS}</style>
         <motion.div
           variants={studioStagger}
           initial="hidden"
           animate={inView ? "visible" : "hidden"}
-          className="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-0"
+          className={`hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 px-0 ${
+            mosaicActive ? (variant === "feature-right" ? "nac-mosaic-right" : "nac-mosaic-left") : ""
+          }`}
         >
-          {data.zones.map((zone, i) => {
+          {visibleZones.map((zone, i) => {
             const Icon = resolveStudioIcon(zone.iconName);
+            const feature = mosaicActive && isFeatureSlot(variant, i);
             return (
               <motion.div
-                key={zone.key}
+                key={zone.key || i}
                 variants={studioFadeUp}
                 custom={i}
-                className={`group relative overflow-hidden transition-all duration-500 ${zone.large ? "md:col-span-2 lg:row-span-2" : ""}`}
-                style={{ minHeight: zone.large ? "420px" : "260px", border: "1px solid rgba(255,255,255,0.07)" }}
+                className="nac-slot group relative overflow-hidden transition-all duration-500"
+                style={{ minHeight: feature ? "420px" : "260px", border: "1px solid rgba(255,255,255,0.07)" }}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(202,12,133,0.35)")}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)")}
               >
@@ -460,6 +496,19 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
                   style={{ filter: "brightness(0.35) saturate(0.9)" }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                {showSlotLabels && (
+                  <span
+                    className="absolute top-2 left-2 z-20"
+                    style={{
+                      background: "rgba(0,0,0,0.75)", border: "1px solid rgba(202,12,133,0.5)",
+                      color: "white", fontFamily: "var(--font-condensed)", fontSize: "10px",
+                      fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase",
+                      padding: "3px 8px",
+                    }}
+                  >
+                    {slotPositionLabel(variant, i)}
+                  </span>
+                )}
                 <div className="relative z-10 flex flex-col justify-end h-full p-6">
                   <div className="flex items-center gap-2 mb-2">
                     <div
@@ -479,7 +528,7 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
                     className="text-white mb-2"
                     style={{
                       fontFamily: "var(--font-display)",
-                      fontSize: zone.large ? "1.8rem" : "1.4rem",
+                      fontSize: feature ? "1.8rem" : "1.4rem",
                       letterSpacing: "0.02em",
                       textTransform: "uppercase",
                     }}
@@ -495,7 +544,7 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
           })}
         </motion.div>
 
-        {/* ── Mobile Swipe Carousel (< sm) ── */}
+        {/* ── Mobile Swipe Carousel (< sm) – gespeicherte Reihenfolge 1→2→3… ── */}
         <div className="sm:hidden">
           <div
             ref={scrollRef}
@@ -509,7 +558,7 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
             }}
           >
             <style>{`.studio-zone-scroll::-webkit-scrollbar { display: none; }`}</style>
-            {data.zones.map((zone) => {
+            {visibleZones.map((zone) => {
               const Icon = resolveStudioIcon(zone.iconName);
               return (
                 <div
@@ -572,7 +621,7 @@ export function StudioZonesSection({ data }: { data: StudioZonesBlockData }) {
             })}
             <div className="shrink-0 w-4" aria-hidden="true" />
           </div>
-          <MobileDots count={data.zones.length} active={activeIdx} onDot={scrollTo} />
+          <MobileDots count={visibleZones.length} active={activeIdx} onDot={scrollTo} />
         </div>
       </div>
     </section>
@@ -919,41 +968,24 @@ export function StudioInfoSection({ data }: { data: StudioInfoBlockData }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Studio() {
   const reduced = useReducedMotion();
-  const [blocks, setBlocks] = useState<PageBlock[]>(() => {
-    try {
-      const saved = localStorage.getItem("nac_blocks_studio");
-      if (saved) {
-        const parsed = JSON.parse(saved) as PageBlock[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return PAGE_INITIAL_BLOCKS["studio"] ?? [];
-  });
+  // Startzustand = Seed; die veröffentlichten API-Blöcke ersetzen ihn nach dem
+  // Fetch. Öffentliche Seiten lesen bewusst KEIN localStorage (Entwürfe sind
+  // Editor-intern) – siehe lib/public-blocks.ts.
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => PAGE_INITIAL_BLOCKS["studio"] ?? []);
 
   useEffect(() => {
     fetchStudioBlocks().then(setBlocks);
   }, []);
 
-  // Live-Sync: Admin speichert im PageEditor → sofort neu laden
+  // Live-Sync: Nach „Veröffentlichen“ im PageEditor → veröffentlichte Blöcke
+  // neu von der API laden (Event ist nur ein Refetch-Signal, keine Datenquelle).
   useEffect(() => {
     const onAdminSave = (e: Event) => {
       const detail = (e as CustomEvent<{ slug: string }>).detail;
       if (detail?.slug === "studio") fetchStudioBlocks().then(setBlocks);
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "nac_blocks_studio" && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue) as PageBlock[];
-          if (Array.isArray(parsed)) setBlocks(parsed);
-        } catch { /* ignore */ }
-      }
-    };
     window.addEventListener("nac-page-updated", onAdminSave);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("nac-page-updated", onAdminSave);
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("nac-page-updated", onAdminSave);
   }, []);
 
   return (
@@ -971,7 +1003,7 @@ export default function Studio() {
         transition={{ duration: 0.45 }}
         style={{ backgroundColor: "var(--surface-0)" }}
       >
-        {blocks.map((block) => {
+        {blocks.filter((block) => !block.hidden).map((block) => {
           switch (block.type) {
             case "studio-hero":
               return (

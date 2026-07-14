@@ -68,7 +68,9 @@ import {
   type BlockType,
 } from "../../../data/blocks";
 import { api } from "../../../lib/api-service";
+import { FIGMA_ASSET_PREFIX } from "../../../lib/images";
 import { BlockPreview } from "../components/BlockPreview";
+import { MobilePreviewFrame } from "../components/MobilePreviewFrame";
 import { BlockSettingsSheet } from "../components/BlockSettingsSheet";
 import { cn } from "../../../lib/utils";
 import { usePageVisibility } from "../../context/PageVisibilityContext";
@@ -79,12 +81,15 @@ const DND_TYPE = "PAGE_BLOCK";
 // ── Local unique id for duplicated/added blocks (no server round-trip) ────────
 const uid = () => `blk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 
-/** True if a block's data references a figma:asset import or an Unsplash stock
- *  URL — surfaced as a per-section warning chip and a save-time warning. This
- *  is the asset-safety signal (see scripts/predeploy-check.mjs), not a blocker. */
+/** True if a block's data references a legacy figma-asset string or an Unsplash
+ *  stock URL — surfaced as a per-section warning chip and a save-time warning.
+ *  This is the asset-safety signal (see scripts/predeploy-check.mjs), not a
+ *  blocker. FIGMA_ASSET_PREFIX is dynamically composed so the contiguous
+ *  legacy prefix never appears as a literal in the built bundle (the predeploy
+ *  gate fails on any such occurrence in dist). */
 function blockHasAssetWarning(block: PageBlock): boolean {
   const json = JSON.stringify(block.data);
-  return json.includes("figma:asset/") || /images\.unsplash\.com/i.test(json);
+  return json.includes(FIGMA_ASSET_PREFIX) || /images\.unsplash\.com/i.test(json);
 }
 
 // ── Page meta (for toolbar) ───────────────────────────────────────────────────
@@ -512,7 +517,7 @@ function BlockPicker({
 function looksLikeSeedContent(blocks: PageBlock[], slug: string): boolean {
   const seed = PAGE_INITIAL_BLOCKS[slug];
   if (seed && blocks === seed) return true;
-  return blocks.some((b) => JSON.stringify(b.data).includes("figma:asset/"));
+  return blocks.some((b) => JSON.stringify(b.data).includes(FIGMA_ASSET_PREFIX));
 }
 
 // ── Main Page Editor ──────────────────────────────────────────────────────────
@@ -556,6 +561,7 @@ export default function PageEditor() {
   const [previewMode, setPreviewMode]     = useState<"desktop" | "mobile">("desktop");
   const [saving, setSaving]              = useState(false);
   const [saveSuccess, setSaveSuccess]     = useState(false);
+  const [localSaved, setLocalSaved]       = useState(false);
 
   // ── Dirty tracking (unsaved changes vs. last persisted snapshot) ────────────
   const lastSavedRef = useRef<string>("");   // JSON of the last loaded/saved blocks
@@ -800,40 +806,64 @@ export default function PageEditor() {
 
     setSaving(true);
 
-    // 1. SEO in localStorage persistieren
-    try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ }
-
-    // 2. Blöcke in localStorage persistieren (schnell, offline-sicher)
-    try {
-      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(blocks));
-      window.dispatchEvent(new CustomEvent("nac-page-updated", { detail: { slug } }));
-    } catch { /* ignore */ }
-
-    // 3. Async zur PHP-API (Best-Effort – schlägt im Offline-Modus still fehl)
+    // 1. ZUERST die autoritative Pages-API (PUT, Auth) – und auf die Antwort
+    //    warten. Erst NACH Erfolg werden lokale Kopien/Events geschrieben:
+    //    ein API-Fehler darf weder Dirty-State löschen noch einen Teil-Publish
+    //    (localStorage/Event) hinterlassen. Kein falscher Erfolg.
+    let savedPage: { blocks?: import("../../../lib/api-service").SerializedBlock[] } | null = null;
     try {
       // "title"/"meta_description" werden hier bewusst NICHT gesendet: der SEO-Tab
       // ist aktuell nur localStorage-gestützt (nie vom Server geladen) – ein Save
       // würde sonst einen echten DB-Titel/Meta-Text stillschweigend überschreiben.
-      await api.pages.saveBlocks(slug, {
+      savedPage = await api.pages.saveBlocks(slug, {
         blocks: blocks as import("../../../lib/api-service").SerializedBlock[],
         status: published ? "published" : "draft",
         allow_empty_blocks: allowEmptyBlocks,
       });
     } catch (err) {
-      console.error("[PageEditor] PHP-API save failed:", err);
-      alert("Fehler beim Speichern in der Datenbank! Die Änderungen wurden nur lokal gesichert.");
+      console.error("[PageEditor] Veröffentlichen fehlgeschlagen:", err);
+      alert(
+        "Veröffentlichen fehlgeschlagen – die Seite wurde NICHT gespeichert.\n\n" +
+        "Deine Änderungen bleiben im Editor erhalten. Nutze „Lokal zwischenspeichern“, " +
+        "um sie im Browser zu sichern, und versuche es erneut."
+      );
       setSaving(false);
       return;
     }
 
-    // Neuen "gespeichert"-Snapshot setzen → Dirty-Indikator zurücksetzen.
-    lastSavedRef.current = JSON.stringify(blocks);
-    loadedCountRef.current = blocks.length;
+    // 2. Autoritative Server-Antwort als neue Baseline übernehmen.
+    const authoritative = Array.isArray(savedPage?.blocks) ? (savedPage!.blocks as unknown as PageBlock[]) : blocks;
+    if (authoritative !== blocks) _setBlocks(authoritative);
+    lastSavedRef.current = JSON.stringify(authoritative);
+    loadedCountRef.current = authoritative.length;
     setDirty(false);
+
+    // 3. Lokale Kopie (Editor-Cache) + Refetch-Signal an offene Public-Tabs –
+    //    Public-Seiten lesen selbst NIE localStorage, das Event stößt nur ihren
+    //    API-Refetch an.
+    try { localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(authoritative));
+      window.dispatchEvent(new CustomEvent("nac-page-updated", { detail: { slug } }));
+    } catch { /* ignore */ }
 
     setSaving(false);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 2500);
+  };
+
+  // ── Lokal zwischenspeichern: NUR localStorage, kein API-Write, kein Event ────
+  // (Semantik: Browser-Entwurf sichern; Veröffentlichen bleibt der einzige Weg
+  // in die Datenbank. Dirty bleibt gesetzt, da nichts publiziert wurde.)
+  const handleSaveLocal = () => {
+    try {
+      localStorage.setItem(`nac_blocks_${slug}`, JSON.stringify(blocks));
+      localStorage.setItem(`nac_seo_${slug}`, JSON.stringify(seo));
+      setLocalSaved(true);
+      setTimeout(() => setLocalSaved(false), 2000);
+    } catch {
+      alert("Lokales Zwischenspeichern fehlgeschlagen (localStorage nicht verfügbar).");
+    }
   };
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
@@ -983,6 +1013,27 @@ export default function PageEditor() {
               style={{ background: published ? "#4ade80" : "rgba(255,255,255,0.2)" }}
             />
             {published ? "Veröffentlicht" : "Entwurf"}
+          </button>
+
+          {/* Lokal zwischenspeichern – nur Browser-Entwurf, kein API-Write */}
+          <button
+            onClick={handleSaveLocal}
+            title="Entwurf nur im Browser sichern (kein Veröffentlichen)"
+            className="flex items-center justify-center gap-2 px-3 transition-all duration-200 cursor-pointer active:scale-[0.98]"
+            style={{
+              background: localSaved ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${localSaved ? "rgba(74,222,128,0.4)" : "rgba(255,255,255,0.12)"}`,
+              color: localSaved ? "#4ade80" : "rgba(255,255,255,0.55)",
+              fontFamily: "var(--font-condensed)",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              minHeight: "34px",
+            }}
+          >
+            {localSaved ? <CheckCircle2 size={12} /> : <Save size={12} />}
+            {localSaved ? "Lokal gesichert" : "Lokal zwischenspeichern"}
           </button>
 
           {/* Save button */}
@@ -1346,19 +1397,8 @@ export default function PageEditor() {
               className="flex-1 overflow-y-auto"
               style={{ background: "#111" }}
             >
-              <div
-                style={{
-                  margin: "0 auto",
-                  maxWidth: previewMode === "mobile" ? "390px" : "1280px",
-                  background: "#050505",
-                  minHeight: "100%",
-                  boxShadow: previewMode === "mobile"
-                    ? "0 0 40px rgba(0,0,0,0.8)"
-                    : "none",
-                  transition: "max-width 0.3s ease",
-                }}
-              >
-                {blocks.length === 0 ? (
+              {(() => {
+                const previewInner = blocks.length === 0 ? (
                   /* Empty state in preview */
                   <div
                     className="flex flex-col items-center justify-center"
@@ -1488,8 +1528,31 @@ export default function PageEditor() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
-                )}
-              </div>
+                );
+
+                // Mobile: echtes 390px-Viewport via iframe — Tailwind-Breakpoints
+                // sind viewport-basiert, nur so greifen exakt die öffentlichen
+                // Mobile-Zweige (identisches Markup, identische Styles).
+                // Desktop: Direkt-Render bei 1280px (Desktop-Breakpoints korrekt).
+                return previewMode === "mobile" ? (
+                  <div style={{ height: "100%" }}>
+                    <MobilePreviewFrame width={390}>
+                      <div style={{ background: "#050505", minHeight: "100%" }}>{previewInner}</div>
+                    </MobilePreviewFrame>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      margin: "0 auto",
+                      maxWidth: "1280px",
+                      background: "#050505",
+                      minHeight: "100%",
+                    }}
+                  >
+                    {previewInner}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

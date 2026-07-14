@@ -560,6 +560,104 @@ function MediaField({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ── LayoutVariantField — Mosaik-Auswahl mit Miniatur-Diagrammen ───────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Zwei Kacheln „Großes Bild links“ / „Großes Bild rechts“. Die Größe gehört
+// zum SLOT (siehe lib/studio-layout.ts) – beim Umschalten aktualisieren sich
+// Positions-Labels und Vorschau sofort (lokaler Editor-State, kein Save nötig).
+
+function MosaicDiagram({ variant }: { variant: "feature-left" | "feature-right" }) {
+  const cell = (feature: boolean): React.CSSProperties => ({
+    background: feature ? "rgba(202,12,133,0.6)" : "rgba(255,255,255,0.16)",
+    borderRadius: 1,
+  });
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gridTemplateRows: "repeat(3, 1fr)",
+        gap: 3,
+        width: "100%",
+        height: 64,
+      }}
+    >
+      {variant === "feature-left" ? (
+        <>
+          {/* Groß links (2×2), zwei Kleine rechts */}
+          <div style={{ ...cell(true), gridColumn: "1 / span 2", gridRow: "1 / span 2" }} />
+          <div style={cell(false)} />
+          <div style={cell(false)} />
+        </>
+      ) : (
+        <>
+          {/* Zwei Kleine links, Groß rechts (2×2) */}
+          <div style={{ ...cell(false), gridColumn: "1", gridRow: "1" }} />
+          <div style={{ ...cell(true), gridColumn: "2 / span 2", gridRow: "1 / span 2" }} />
+          <div style={{ ...cell(false), gridColumn: "1", gridRow: "2" }} />
+        </>
+      )}
+      {/* Untere Reihe: drei Kleine */}
+      <div style={cell(false)} />
+      <div style={cell(false)} />
+      <div style={cell(false)} />
+    </div>
+  );
+}
+
+function LayoutVariantField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const current = value === "feature-right" ? "feature-right" : "feature-left";
+  const options = [
+    { key: "feature-left" as const,  label: "Großes Bild links" },
+    { key: "feature-right" as const, label: "Großes Bild rechts" },
+  ];
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      {options.map((opt) => {
+        const active = current === opt.key;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onChange(opt.key)}
+            className="cursor-pointer transition-all duration-150 active:scale-[0.98]"
+            style={{
+              padding: "10px",
+              background: active ? "rgba(202,12,133,0.1)" : "rgba(255,255,255,0.03)",
+              border: `1px solid ${active ? "rgba(202,12,133,0.5)" : "rgba(255,255,255,0.1)"}`,
+              borderRadius: "3px",
+              textAlign: "center",
+            }}
+          >
+            <MosaicDiagram variant={opt.key} />
+            <span
+              style={{
+                display: "block",
+                marginTop: "8px",
+                fontFamily: "var(--font-condensed)",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: active ? "var(--brand)" : "rgba(255,255,255,0.5)",
+              }}
+            >
+              {opt.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ── LinkField — internal/external link with validation ────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 // The data model stays a plain string (backward-compatible with every existing
@@ -659,10 +757,13 @@ function FieldRow({
   field,
   value,
   onChange,
+  blockData,
 }: {
   field: FieldSchema;
   value: unknown;
   onChange: (v: unknown) => void;
+  /** Aktuelle (ungespeicherte) Daten des gesamten Blocks – für Repeater-Positionslabels. */
+  blockData?: Record<string, unknown>;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -723,9 +824,17 @@ function FieldRow({
       {/* ── toggle ────────────────────────────────────────────────────────────── */}
       {field.type === "toggle" && (
         <ToggleField
-          value={Boolean(value)}
+          value={value === undefined ? (field.toggleDefault ?? false) : Boolean(value)}
           onChange={onChange as (v: boolean) => void}
           label={field.label}
+        />
+      )}
+
+      {/* ── layout-variant (Mosaik-Kacheln) ───────────────────────────────────── */}
+      {field.type === "layout-variant" && (
+        <LayoutVariantField
+          value={String(value ?? "feature-left")}
+          onChange={onChange as (v: string) => void}
         />
       )}
 
@@ -765,12 +874,42 @@ function FieldRow({
         />
       )}
 
+      {/* ── group (verschachteltes Objekt, z. B. Raster/Beispielrechnung) ─────── */}
+      {field.type === "group" && (
+        <div
+          className="flex flex-col gap-4"
+          style={{
+            padding: "12px",
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderLeft: "2px solid rgba(202,12,133,0.35)",
+            borderRadius: "3px",
+          }}
+        >
+          {field.subFields?.map((sf) => {
+            const obj = (value && typeof value === "object" && !Array.isArray(value))
+              ? (value as Record<string, unknown>)
+              : {};
+            return (
+              <FieldRow
+                key={sf.key}
+                field={sf}
+                value={obj[sf.key]}
+                onChange={(v) => onChange({ ...obj, [sf.key]: v })}
+                blockData={blockData}
+              />
+            );
+          })}
+        </div>
+      )}
+
       {/* ── repeater ──────────────────────────────────────────────────────────── */}
       {field.type === "repeater" && (
         <RepeaterField
           field={field}
           value={Array.isArray(value) ? (value as Record<string, unknown>[]) : []}
           onChange={onChange as (v: Record<string, unknown>[]) => void}
+          blockData={blockData}
         />
       )}
 
@@ -856,13 +995,30 @@ function RepeaterField({
   field,
   value,
   onChange,
+  blockData,
 }: {
   field: FieldSchema;
   value: Record<string, unknown>[];
   onChange: (v: Record<string, unknown>[]) => void;
+  blockData?: Record<string, unknown>;
 }) {
   // Normalise: ensure every item has a stable internal `_id`
   const items: Record<string, unknown>[] = (Array.isArray(value) ? value : []).map(withId);
+
+  // Positions-/Rollenlabels (z. B. "Position 1 · Groß links"): der sichtbare
+  // Index zählt nur Einträge mit visible !== false — Ausgeblendete fallen aus
+  // der Slot-Berechnung, genau wie im Renderer.
+  const roleLabels: (string | null)[] | null = field.positionRole
+    ? (() => {
+        let visIdx = 0;
+        return items.map((it) => {
+          const isVisible = it.visible !== false;
+          const label = field.positionRole!(isVisible ? visIdx : null, blockData ?? {});
+          if (isVisible) visIdx++;
+          return label;
+        });
+      })()
+    : null;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -870,7 +1026,7 @@ function RepeaterField({
   const buildEmpty = (): Record<string, unknown> => {
     const obj: Record<string, unknown> = { _id: nextId() };
     field.subFields?.forEach((sf) => {
-      if (sf.type === "toggle") obj[sf.key] = true; // new rows default to visible
+      if (sf.type === "toggle") obj[sf.key] = sf.toggleDefault ?? false; // "visible" fields set toggleDefault:true
       else if (sf.type === "number") obj[sf.key] = sf.min ?? 0;
       else if (sf.type === "multiselect") obj[sf.key] = [];
       else if (sf.type === "repeater") obj[sf.key] = []; // nested list starts empty
@@ -980,6 +1136,29 @@ function RepeaterField({
               >
                 #{idx + 1}
               </span>
+
+              {/* Positions-/Rollenlabel (z. B. "Position 1 · Groß links") */}
+              {roleLabels && (
+                <span
+                  style={{
+                    fontFamily: "var(--font-condensed)",
+                    fontSize: "9px",
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: roleLabels[idx] === "Ausgeblendet" ? "rgba(255,255,255,0.3)" : "rgba(56,189,248,0.85)",
+                    background: roleLabels[idx] === "Ausgeblendet" ? "rgba(255,255,255,0.05)" : "rgba(56,189,248,0.08)",
+                    border: `1px solid ${roleLabels[idx] === "Ausgeblendet" ? "rgba(255,255,255,0.1)" : "rgba(56,189,248,0.25)"}`,
+                    padding: "2px 7px",
+                    borderRadius: "2px",
+                    marginRight: "auto",
+                    marginLeft: "6px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {roleLabels[idx]}
+                </span>
+              )}
 
               {/* Item actions: move up / move down / duplicate / delete */}
               <div className="flex items-center gap-1">
@@ -1215,6 +1394,7 @@ export function BlockSettingsSheet({
                   field={field}
                   value={localData[field.key]}
                   onChange={(v) => handleFieldChange(field.key, v)}
+                  blockData={localData}
                 />
               ))}
 

@@ -6,12 +6,13 @@
  */
 
 import { mockDb } from "../data/mock-db";
+import { BASE_URL } from "../lib/api-service";
 import type { PressArticle, MediaType } from "../data/press";
 
 // Re-export types for convenience
 export type { PressArticle, MediaType };
 
-const BASE = "https://nicefitness.de/api";
+const BASE = BASE_URL;
 const TOKEN_KEY = "nac_auth_token";
 const getToken = (): string | null => {
   try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { PageMeta } from "../components/seo/PageMeta";
 import { api, BASE_URL } from "../../lib/api-service";
+import { fetchPublishedBlocks } from "../../lib/public-blocks";
 import {
   PAGE_INITIAL_BLOCKS,
   type PageBlock,
@@ -63,28 +64,11 @@ interface TeamMember {
 }
 
 // ── Page-blocks fetch ─────────────────────────────────────────────────────────
+// Öffentliche Priorität: veröffentlichte API-Blöcke → Seed nur bei fehlender
+// Seite. NIE localStorage (Editor-Entwürfe); siehe lib/public-blocks.ts.
 async function fetchTeamBlocks(): Promise<PageBlock[]> {
-  // 1. Try PHP API (production)
-  try {
-    const res = await fetch(`${BASE_URL}/pages.php?slug=team`, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (Array.isArray(json?.blocks) && json.blocks.length > 0) {
-      return json.blocks as PageBlock[];
-    }
-  } catch { /* fall through */ }
-  // 2. Admin edits (localStorage)
-  try {
-    const saved = localStorage.getItem("nac_blocks_team");
-    if (saved) {
-      const parsed = JSON.parse(saved) as PageBlock[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch { /* fall through */ }
-  // 3. Seed data
-  return PAGE_INITIAL_BLOCKS["team"] ?? [];
+  const { blocks } = await fetchPublishedBlocks("team", PAGE_INITIAL_BLOCKS["team"] ?? []);
+  return blocks;
 }
 
 // ── Custom Icons ──────────────────────────────────────────────────────────────
@@ -869,41 +853,22 @@ export function TeamGridSection({ data }: { data: TeamGridBlockData }) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Team() {
   const reduced = useReducedMotion();
-  const [blocks, setBlocks] = useState<PageBlock[]>(() => {
-    try {
-      const saved = localStorage.getItem("nac_blocks_team");
-      if (saved) {
-        const parsed = JSON.parse(saved) as PageBlock[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return PAGE_INITIAL_BLOCKS["team"] ?? [];
-  });
+  // Startzustand = Seed; veröffentlichte API-Blöcke ersetzen ihn nach dem
+  // Fetch. Öffentliche Seiten lesen kein localStorage (Editor-Entwürfe).
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => PAGE_INITIAL_BLOCKS["team"] ?? []);
 
   useEffect(() => {
     fetchTeamBlocks().then(setBlocks);
   }, []);
 
-  // Live-Sync: Admin speichert im PageEditor → sofort aktualisieren
+  // Live-Sync: Nach „Veröffentlichen“ → veröffentlichte Blöcke neu laden.
   useEffect(() => {
     const onAdminSave = (e: Event) => {
       const detail = (e as CustomEvent<{ slug: string }>).detail;
       if (detail?.slug === "team") fetchTeamBlocks().then(setBlocks);
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "nac_blocks_team" && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue) as PageBlock[];
-          if (Array.isArray(parsed)) setBlocks(parsed);
-        } catch { /* ignore */ }
-      }
-    };
     window.addEventListener("nac-page-updated", onAdminSave);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("nac-page-updated", onAdminSave);
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("nac-page-updated", onAdminSave);
   }, []);
 
   return (

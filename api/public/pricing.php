@@ -113,12 +113,38 @@ $plans = array_map(function ($row) {
 // 2. Add-ons – seitenspezifisch
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Erweiterte Spalten (icon / right_text / row-description / visible) sind
+// additiv – siehe api/sql/2026-07-11_addon_row_model.sql. Vor der Migration
+// fehlen sie in Produktion; dann liefert die API dieselbe Payload wie bisher
+// plus abgeleitete leftText/rightText-Felder (rightText = "+{price}€").
+function pp_has_column(PDO $pdo, string $table, string $column): bool
+{
+    static $cache = [];
+    $key = $table . '.' . $column;
+    if (!array_key_exists($key, $cache)) {
+        try {
+            $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$table}` LIKE ?");
+            $stmt->execute([$column]);
+            $cache[$key] = (bool)$stmt->fetch();
+        } catch (PDOException $e) {
+            $cache[$key] = false;
+        }
+    }
+    return $cache[$key];
+}
+
+$hasIcon    = pp_has_column($pdo, 'pricing_addons', 'icon');
+$hasRight   = pp_has_column($pdo, 'pricing_addon_options', 'right_text');
+$hasOptDesc = pp_has_column($pdo, 'pricing_addon_options', 'description');
+$hasOptVis  = pp_has_column($pdo, 'pricing_addon_options', 'visible');
+
+$iconSel = $hasIcon ? ', a.icon' : '';
 $stmt = $pdo->prepare("
     SELECT
         a.id,
         a.slug,
         a.name,
-        a.description,
+        a.description{$iconSel},
         pa.sort_order
     FROM pricing_page_addons pa
     INNER JOIN pricing_addons a ON a.id = pa.addon_id
@@ -129,11 +155,17 @@ $stmt = $pdo->prepare("
 $stmt->execute([':page' => $page]);
 $rawAddons = $stmt->fetchAll();
 
+$optCols = 'label, price'
+    . ($hasRight   ? ', right_text'  : '')
+    . ($hasOptDesc ? ', description' : '')
+    . ($hasOptVis  ? ', visible'     : '');
+$optWhere = $hasOptVis ? 'AND (visible IS NULL OR visible = 1)' : '';
+
 $addons = [];
 foreach ($rawAddons as $a) {
     $optStmt = $pdo->prepare("
-        SELECT label, price FROM pricing_addon_options
-        WHERE addon_id = :aid ORDER BY sort_order ASC
+        SELECT {$optCols} FROM pricing_addon_options
+        WHERE addon_id = :aid {$optWhere} ORDER BY sort_order ASC
     ");
     $optStmt->execute([':aid' => $a['id']]);
     $options = $optStmt->fetchAll();
@@ -143,10 +175,18 @@ foreach ($rawAddons as $a) {
         'slug'        => $a['slug'],
         'name'        => $a['name'],
         'description' => $a['description'] ?: null,
+        'icon'        => $hasIcon ? ($a['icon'] ?: null) : null,
         'options'     => array_map(function ($o) {
+            $price = (float)$o['price'];
+            $right = (isset($o['right_text']) && $o['right_text'] !== null && $o['right_text'] !== '')
+                ? $o['right_text']
+                : '+' . (fmod($price, 1.0) === 0.0 ? (string)(int)$price : (string)$price) . '€';
             return [
-                'label' => $o['label'],
-                'price' => (float)$o['price'],
+                'label'       => $o['label'],
+                'price'       => $price,
+                'leftText'    => $o['label'],
+                'rightText'   => $right,
+                'description' => isset($o['description']) && $o['description'] !== '' ? $o['description'] : null,
             ];
         }, $options),
         'sort_order'  => (int)$a['sort_order'],

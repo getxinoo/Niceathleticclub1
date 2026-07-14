@@ -33,9 +33,15 @@ export interface PublicPlan {
 }
 
 // ── Add-on ───────────────────────────────────────────────────────────────────
+// leftText/rightText sind die Anzeige-Spalten einer Options-Zeile (Freitext);
+// label/price bleiben als Altfelder erhalten (leftText fällt auf label zurück,
+// rightText auf "+{price}€"). description ist eine optionale Unterzeile.
 export interface PublicAddonOption {
   label: string;
   price: number;
+  leftText?: string;
+  rightText?: string;
+  description?: string | null;
 }
 
 export interface PublicAddon {
@@ -43,8 +49,12 @@ export interface PublicAddon {
   slug: string;
   name: string;
   description: string | null;
+  /** Lucide-Icon-Name der Karte (Whitelist, Fallback: Zap). */
+  icon?: string | null;
   options: PublicAddonOption[];
   sort_order: number;
+  /** CMS-Slot 1–6 im Custom-Grid; von applyAddonsConfig gesetzt. */
+  slot?: number;
 }
 
 // ── Hinweisblock ─────────────────────────────────────────────────────────────

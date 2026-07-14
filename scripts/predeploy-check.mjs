@@ -24,6 +24,14 @@
  *   C (FAIL) dist/index.html missing or references no JS bundle
  *   D (FAIL) images.unsplash.com count in dist EXCEEDS baseline (regression)
  *   D (WARN) images.unsplash.com present at/below baseline (frozen seed data)
+ *   E (FAIL) ANY raw "figma:asset/" string in dist text files — unresolved
+ *            asset references reached the bundle (signature of the 2026-07-10
+ *            production outage; runtime code must compose the prefix
+ *            dynamically, see src/lib/images.ts FIGMA_ASSET_PREFIX)
+ *   F (FAIL) a /images/... path referenced anywhere in dist text does not
+ *            exist as a file in dist (broken canonical reference)
+ *   G (FAIL) literal empty/undefined/null img-src patterns in dist text
+ *   H (FAIL) dev-mock login credentials present in dist (DEV gate broken)
  *
  * USAGE:  npm run build && npm run predeploy:check
  */
@@ -111,11 +119,25 @@ async function main() {
   const distFiles = await walk(DIST);
   const textExt = /\.(js|css|html|json|map|txt|xml|svg)$/i;
 
-  // A + D: scan dist text for incident signature and Unsplash count.
-  // Incident signature: a figma:asset key mapping directly to an unsplash URL.
+  // A + D + E + F + G + H: scan dist text for incident signature, Unsplash count,
+  // raw unresolved asset strings, referenced /images/-paths, broken src literals
+  // and leaked dev-mock credentials. FIGMA_NEEDLE is composed dynamically so this
+  // script (and any future copy of the pattern) can never satisfy its own gate by
+  // accident.
   const incidentRe = /figma:asset\/[0-9a-f]{40}\.png"\s*:\s*"[^"]*unsplash[^"]*"/i;
+  const FIGMA_NEEDLE = ['figma', 'asset/'].join(':');
+  const imgRefRe = /\/images\/[A-Za-z0-9_\-./]+?\.(?:png|jpe?g|webp|svg|gif)/g;
+  const badSrcRes = [/src=""/, /src="undefined"/, /src="null"/, /src:\s*"undefined"/, /src:\s*"null"/];
+  // H: dev-mock credentials must NEVER reach a production bundle. These are the
+  // (burned, rotation pending) DEV_MOCK_ACCOUNTS passwords from AuthContext.tsx /
+  // api-service.ts, which are import.meta.env.DEV-gated and must be dead-code-
+  // eliminated by `vite build`. Split literals so this script itself never
+  // contains the greppable secrets.
+  const FORBIDDEN_SECRETS = ['NACAdmin' + '2026!', 'Milow' + '2025!'];
   let unsplashCount = 0;
+  let figmaRawCount = 0;
   let scanned = 0;
+  const referencedImages = new Set();
   for (const f of distFiles) {
     if (!textExt.test(f)) continue;
     scanned++;
@@ -124,6 +146,34 @@ async function main() {
     if (incidentRe.test(content)) {
       fail(`INCIDENT SIGNATURE: figma:asset resolves to Unsplash in ${f.replace(DIST, 'dist')}`);
     }
+    // E: raw unresolved asset prefix anywhere in built output → hard fail
+    const rawHits = countOccurrences(content, FIGMA_NEEDLE);
+    if (rawHits > 0) {
+      figmaRawCount += rawHits;
+      fail(`RAW ${FIGMA_NEEDLE} string (${rawHits}x) in ${f.replace(DIST, 'dist')} — unresolved asset reference in bundle`);
+    }
+    // F: collect every referenced /images/... path for the existence check
+    for (const m of content.matchAll(imgRefRe)) referencedImages.add(m[0]);
+    // G: literal broken src patterns
+    for (const re of badSrcRes) {
+      if (re.test(content)) {
+        fail(`Broken src literal (${re.source}) in ${f.replace(DIST, 'dist')}`);
+      }
+    }
+    // H: dev-mock credential strings must never appear in a production bundle
+    for (const secret of FORBIDDEN_SECRETS) {
+      if (content.includes(secret)) {
+        fail(`DEV-MOCK CREDENTIAL "${secret.slice(0, 4)}…" leaked into ${f.replace(DIST, 'dist')} ` +
+          `— import.meta.env.DEV gate is broken. NEVER deploy this build.`);
+      }
+    }
+  }
+
+  // F: every referenced /images/... path must exist as a real file in dist
+  let missingRefCount = 0;
+  for (const rel of referencedImages) {
+    try { await stat(join(DIST, rel)); }
+    catch { missingRefCount++; fail(`Referenced image missing in dist: ${rel}`); }
   }
 
   // C: index.html sanity
@@ -159,8 +209,11 @@ async function main() {
 
   console.log(`   dist text files scanned:        ${scanned}`);
   console.log(`   figma:asset → Unsplash mappings: ${failures.filter(f => f.includes('INCIDENT')).length} (must be 0)`);
+  console.log(`   raw ${FIGMA_NEEDLE} strings in dist: ${figmaRawCount} (must be 0)`);
   console.log(`   images.unsplash.com count:       ${unsplashCount} (baseline ${UNSPLASH_BASELINE})`);
+  console.log(`   dev-mock credential leaks:       ${failures.filter(f => f.includes('DEV-MOCK')).length} (must be 0)`);
   console.log(`   required images checked:         ${REQUIRED_IMAGES.length} (× public + dist)`);
+  console.log(`   referenced /images/ paths:       ${referencedImages.size} (${missingRefCount} missing)`);
 
   if (warnings.length) {
     console.log(`\n⚠️  Warnings (${warnings.length}) — non-blocking:`);

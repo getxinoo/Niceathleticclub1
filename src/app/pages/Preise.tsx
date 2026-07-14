@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { PageMeta } from "../components/seo/PageMeta";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { BASE_URL } from "../../lib/api-service";
+import { fetchPublishedBlocks } from "../../lib/public-blocks";
+import { applyAddonsConfig } from "../../lib/addons-config";
 import { usePricingData } from "../../lib/use-pricing";
 import {
   PricingSection,
@@ -46,28 +47,12 @@ import {
   migrateLegacyBlocks,
 } from "../../data/blocks";
 
-// ── localStorage key ──────────────────────────────────────────────────────────
-const LS_KEY = "nac_blocks_preise";
-// ── Fetch blocks: API → localStorage → seed ──────────────────────────────────
+// ── Fetch blocks: veröffentlichte API-Blöcke → Seed nur bei fehlender Seite ──
+// (NIE localStorage – Browser-Entwürfe sind Editor-intern; lib/public-blocks.ts.
+// migrateLegacyBlocks bleibt für Alt-Produktionsdaten in der Pipeline.)
 async function fetchPreiseBlocks(): Promise<PageBlock[]> {
-  try {
-    const res = await fetch(`${BASE_URL}/pages.php?slug=preise`, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
-    if (Array.isArray(json?.blocks) && json.blocks.length > 0) {
-      return migrateLegacyBlocks(json.blocks as PageBlock[]);
-    }
-  } catch { /* fall through */ }
-  try {
-    const saved = localStorage.getItem(LS_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as PageBlock[];
-      if (Array.isArray(parsed) && parsed.length > 0) return migrateLegacyBlocks(parsed);
-    }
-  } catch { /* fall through */ }
-  return migrateLegacyBlocks(PAGE_INITIAL_BLOCKS["preise"] ?? []);
+  const { blocks } = await fetchPublishedBlocks("preise", PAGE_INITIAL_BLOCKS["preise"] ?? []);
+  return migrateLegacyBlocks(blocks);
 }
 
 // ── Icon map ──────────────────────────────────────────────────────────────────
@@ -720,34 +705,19 @@ function PricingCardsSection({ data }: { data: PricingCardsBlockData }) {
   );
 }
 
-// ── Pricing Addons Block (real API data, CMS-filtered) ───────────────────────
+// ── Pricing Addons Block (real API data, CMS-Layout via applyAddonsConfig) ───
 function PricingAddonsCmsBlock({ data }: { data: PricingAddonsBlockData }) {
   const { data: pricingData, loading } = usePricingData("preise");
   if (loading) return null;
-  let addons = pricingData?.addons ?? [];
-  if (data.addonsConfig && data.addonsConfig.length > 0) {
-    addons = data.addonsConfig
-      .filter((cfg) => !cfg.hidden)
-      .map((cfg) => {
-        const found = addons.find((a) => a.slug === cfg.id || a.id.toString() === cfg.id);
-        if (!found) return null;
-        const addon = { ...found };
-        if (cfg.optionsConfig && cfg.optionsConfig.length > 0) {
-          addon.options = cfg.optionsConfig
-            .filter((optCfg) => !optCfg.hidden)
-            .map((optCfg) => addon.options?.find((o) => o.label === optCfg.id))
-            .filter(Boolean) as typeof addon.options;
-        }
-        return addon;
-      })
-      .filter(Boolean) as typeof addons;
-  }
+  const addons = applyAddonsConfig(pricingData?.addons ?? [], data);
   return (
     <>
       <PricingAddonsSection
         addons={addons}
         heading={data.heading || undefined}
         subtitle={data.subtitle || undefined}
+        grid={data.grid}
+        calculation={data.calculation}
       />
       <PricingNoticeBlock notices={pricingData?.notices?.filter((n: any) => n.type !== "contract") || []} plans={pricingData?.plans || []} />
     </>
@@ -812,41 +782,22 @@ function renderBlock(block: PageBlock) {
 // PAGE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Preise() {
-  const [blocks, setBlocks] = useState<PageBlock[]>(() => {
-    try {
-      const saved = localStorage.getItem(LS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as PageBlock[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch { /* ignore */ }
-    return PAGE_INITIAL_BLOCKS["preise"] ?? [];
-  });
+  // Startzustand = Seed; veröffentlichte API-Blöcke ersetzen ihn nach dem
+  // Fetch. Öffentliche Seiten lesen kein localStorage (Editor-Entwürfe).
+  const [blocks, setBlocks] = useState<PageBlock[]>(() => PAGE_INITIAL_BLOCKS["preise"] ?? []);
 
   useEffect(() => {
     fetchPreiseBlocks().then(setBlocks);
   }, []);
 
-  // Live-Sync: Admin PageEditor → sofort aktualisieren
+  // Live-Sync: Nach „Veröffentlichen“ → veröffentlichte Blöcke neu laden.
   useEffect(() => {
     const onAdminSave = (e: Event) => {
       const detail = (e as CustomEvent<{ slug: string }>).detail;
       if (detail?.slug === "preise") fetchPreiseBlocks().then(setBlocks);
     };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_KEY && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue) as PageBlock[];
-          if (Array.isArray(parsed)) setBlocks(parsed);
-        } catch { /* ignore */ }
-      }
-    };
     window.addEventListener("nac-page-updated", onAdminSave);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener("nac-page-updated", onAdminSave);
-      window.removeEventListener("storage", onStorage);
-    };
+    return () => window.removeEventListener("nac-page-updated", onAdminSave);
   }, []);
 
   return (

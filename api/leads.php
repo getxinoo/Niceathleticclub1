@@ -15,6 +15,15 @@ require_once 'config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $id     = isset($_GET['id']) ? (int) $_GET['id'] : null;
 
+// ── Authorization (P1 Security-Hotfix) ───────────────────────────────────────
+// Zuvor offen: Lead-PII (Name/E-Mail/Telefon) ohne Anmeldung les-/schreibbar.
+// GET erfordert leads.read, alle Schreibmethoden leads.write (Member → 403).
+if ($method === 'GET') {
+    require_permission('leads.read');
+} else {
+    require_permission('leads.write');
+}
+
 switch ($method) {
     case 'GET':
         $id !== null ? get_lead($id) : list_leads();
