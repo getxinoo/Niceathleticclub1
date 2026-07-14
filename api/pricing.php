@@ -30,9 +30,15 @@ function pr_has_column(PDO $pdo, string $table, string $column): bool
     $key = $table . '.' . $column;
     if (!array_key_exists($key, $cache)) {
         try {
-            $stmt = $pdo->prepare("SHOW COLUMNS FROM `{$table}` LIKE ?");
-            $stmt->execute([$column]);
-            $cache[$key] = (bool)$stmt->fetch();
+            // Engine-portabel: MariaDB 10.4 (Staging) lehnt einen gebundenen
+            // Parameter in einem echten Server-Prepare von SHOW COLUMNS ab
+            // (config.php setzt ATTR_EMULATE_PREPARES=false → Fehler 1064).
+            // Tabellen-/Spaltennamen sind hier feste Konstanten, kein User-Input,
+            // daher literales query() + exakter Abgleich in PHP (kein LIKE-
+            // Wildcard-Risiko durch '_' in Spalten wie right_text/description).
+            $stmt = $pdo->query("SHOW COLUMNS FROM `{$table}`");
+            $cols = $stmt ? $stmt->fetchAll(PDO::FETCH_COLUMN, 0) : [];
+            $cache[$key] = in_array($column, $cols, true);
         } catch (PDOException $e) {
             $cache[$key] = false;
         }
